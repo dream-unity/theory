@@ -1,7 +1,7 @@
 {
-  "name": "dream-unity-theory-observatory",
+  "name": "dream-unity-theory-atlas",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 8080",
@@ -9,7 +9,7 @@
     "pages:prepare": "npm run build && node scripts/sync-pages-root.mjs",
     "seed:export": "node --experimental-strip-types scripts/export-seed.mjs",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run src/lib/document.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

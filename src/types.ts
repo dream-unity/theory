@@ -1,178 +1,117 @@
+export const QUADRANTS = ['maker', 'machine', 'world', 'unity'] as const
+export const KINDS = ['core', 'facet', 'form', 'field', 'principle', 'practice', 'tension'] as const
 export const PORTALS = ['maker', 'machine', 'world', 'unity'] as const
 export const FORMS = ['consciousness', 'relational', 'strategic'] as const
-export const PHASES = ['ether', 'formation', 'compression', 'synthesis', 'realisation', 'reflection', 'return'] as const
-export const NODE_TYPES = [
-  'concept',
-  'claim',
-  'mechanism',
-  'model',
-  'synthesis',
-  'practice',
-  'evidence',
-  'source',
-  'question',
-  'tension',
-  'example',
-  'document',
-] as const
-export const MATURITY_LEVELS = ['seed', 'articulated', 'connected', 'challenged', 'grounded', 'realised', 'integrated'] as const
-export const STANCES = ['open', 'provisional', 'adopted', 'contested', 'superseded', 'archived'] as const
-export const CONFIDENCE_LEVELS = ['unknown', 'low', 'medium', 'high'] as const
+export const PHASES = ['ether', 'formation', 'compression', 'synthesis', 'realisation', 'reflection'] as const
+export const STANCES = ['open', 'provisional', 'adopted', 'contested', 'superseded'] as const
+export const VIEWS = ['inbox', 'whole-theory', 'mirror-freedom', 'three-forms', 'realisation-lab'] as const
+export const DRAWERS = ['essence', 'relations', 'grounding', 'mirror', 'practice'] as const
 
+export type Quadrant = (typeof QUADRANTS)[number]
+export type Kind = (typeof KINDS)[number]
 export type Portal = (typeof PORTALS)[number]
 export type Form = (typeof FORMS)[number]
 export type Phase = (typeof PHASES)[number]
-export type TheoryNodeType = (typeof NODE_TYPES)[number]
-export type Maturity = (typeof MATURITY_LEVELS)[number]
 export type Stance = (typeof STANCES)[number]
-export type Confidence = (typeof CONFIDENCE_LEVELS)[number]
+export type AtlasView = (typeof VIEWS)[number]
+export type Drawer = (typeof DRAWERS)[number]
 
-export type KnowledgeMode =
-  | 'empirical'
-  | 'logical'
-  | 'phenomenological'
-  | 'interpretive'
-  | 'normative'
-  | 'symbolic'
-  | 'speculative'
-  | 'design'
-
-export interface SourceReference {
+export interface SourceRef {
   id: string
+  kind: 'paper' | 'journal' | 'transcript' | 'text' | 'video' | 'journal-entry'
   title: string
-  url?: string
   locator?: string
-  note?: string
 }
 
-export interface Provenance {
-  origin: 'human' | 'source' | 'imported' | 'ai-proposed'
-  createdBy: string
-  createdAt: string
-  updatedBy: string
-  updatedAt: string
-  derivedFrom: string[]
+export interface Mirror {
+  identity: string
+  intention: string
+  coreParadox: string
+  inversionRisk: string
+  falsifier: string
+  restoringAction: string
 }
 
-export interface TheoryNode {
+export interface Practice {
+  methods: string
+  experiments: string
+  habits: string
+}
+
+export interface Concept {
   id: string
-  slug: string
-  type: TheoryNodeType
   title: string
+  kind: Kind
+  quadrant: Quadrant
   essence: string
-  bodyMarkdown: string
-  aliases: string[]
-  facets: {
-    portals: Portal[]
-    forms: Form[]
-    phases: Phase[]
-    scales: string[]
-    topics: string[]
-  }
-  epistemics: {
-    maturity: Maturity
-    stance: Stance
-    confidence: Confidence
-    confidenceRationale?: string
-    knowledgeModes: KnowledgeMode[]
-    scope?: string
-    lastReviewedAt?: string
-  }
-  sources: SourceReference[]
-  mirror?: {
-    directExperience?: string
-    representation?: string
-    primalValue?: string
-    inversionRisk?: string
-    falsifier?: string
-    restoringAction?: string
-  }
-  provenance: Provenance
+  notes: string
+  portals: Portal[]
+  forms: Form[]
+  phase: Phase
+  stance: Stance
+  maturity: number
+  tags: string[]
+  fileUnder: string
+  sources: SourceRef[]
+  mirror: Mirror
+  practice: Practice
+  views: AtlasView[]
+  inbox?: boolean
 }
 
-export type RelationStatus = 'proposed' | 'accepted' | 'contested' | 'superseded'
-
-export interface TheoryEdge {
+export interface Relation {
   id: string
   from: string
   to: string
-  relation: string
-  rationale: string
-  family: 'structure' | 'dynamics' | 'reasoning' | 'correspondence' | 'integration' | 'provenance'
-  status: RelationStatus
-  confidence?: Exclude<Confidence, 'unknown'>
-  evidenceIds: string[]
-  provenance: Provenance
+  verb: string
 }
 
-export interface ViewNodeState {
+export interface Position {
   x: number
   y: number
-  pinned?: boolean
-  hidden?: boolean
+}
+
+export interface AtlasDocument {
+  schemaVersion: 2
+  revision: number
   updatedAt: string
+  concepts: Concept[]
+  relations: Relation[]
+  positions: Record<string, Position>
 }
 
-export interface TheoryView {
-  id: string
-  title: string
-  description: string
-  focusQuestion: string
-  rootNodeId?: string
-  includedNodeIds: string[]
-  positions: Record<string, ViewNodeState>
-  collapsedClusters: string[]
-  visibleEdgeFamilies: TheoryEdge['family'][]
-  guidedPath?: string[]
+export const KIND_LABEL: Record<Kind, string> = {
+  core: 'CORE',
+  facet: 'FACET',
+  form: 'FORM',
+  field: 'FIELD',
+  principle: 'PRINCIPLE',
+  practice: 'PRACTICE',
+  tension: 'TENSION',
 }
 
-export interface Tombstone {
-  id: string
-  entity: 'node' | 'edge' | 'view'
-  deletedAt: string
+export const QUADRANT_META: Record<
+  Quadrant,
+  { label: string; accent: string; soft: string; ink: string }
+> = {
+  maker: { label: 'MAKER', accent: '#2ee6c5', soft: 'rgba(46, 230, 197, 0.14)', ink: '#8ef6e4' },
+  machine: { label: 'MACHINE', accent: '#f0b429', soft: 'rgba(240, 180, 41, 0.14)', ink: '#f7d48a' },
+  world: { label: 'WORLD', accent: '#4ade80', soft: 'rgba(74, 222, 128, 0.14)', ink: '#9cf0b6' },
+  unity: { label: 'UNITY', accent: '#c084fc', soft: 'rgba(192, 132, 252, 0.16)', ink: '#e0b8ff' },
 }
 
-export interface TheoryDocument {
-  schemaVersion: 1
-  meta: {
-    id: string
-    title: string
-    subtitle: string
-    repository: string
-    branch: string
-    dataPath: string
-    revision: number
-    createdAt: string
-    updatedAt: string
-  }
-  nodes: TheoryNode[]
-  edges: TheoryEdge[]
-  views: TheoryView[]
-  tombstones: Tombstone[]
+export const VIEW_META: Record<AtlasView, { title: string; version: string; hint: string }> = {
+  inbox: { title: 'Inbox', version: 'live', hint: 'Unfiled captures waiting for a drawer' },
+  'whole-theory': { title: 'Whole Theory', version: 'v0.8.4', hint: 'Maker · Machine · World · Unity' },
+  'mirror-freedom': { title: 'Mirror & Freedom', version: 'v0.7.1', hint: 'Creative freedom and inversion risk' },
+  'three-forms': { title: 'Three Forms', version: 'v0.6.3', hint: 'Consciousness · Relational · Strategic' },
+  'realisation-lab': { title: 'Realisation Lab', version: 'v0.5.2', hint: 'Practices, experiments, lived tests' },
 }
 
-export type SyncState =
-  | { kind: 'loading'; label: string }
-  | { kind: 'local'; label: string }
-  | { kind: 'queued'; label: string }
-  | { kind: 'syncing'; label: string }
-  | { kind: 'synced'; label: string; at: string }
-  | { kind: 'offline'; label: string }
-  | { kind: 'conflict'; label: string }
-  | { kind: 'error'; label: string }
-
-export interface GithubSession {
-  token: string
-  login: string
-  avatarUrl?: string
-  repository: string
-  branch: string
-  dataPath: string
-}
-
-export interface RuntimeConfig {
-  repository: string
-  branch: string
-  dataPath: string
-  githubOAuthClientId?: string
+export function maturityLabel(value: number): string {
+  if (value >= 9) return 'Highly Coherent'
+  if (value >= 7) return 'Articulated'
+  if (value >= 5) return 'Connected'
+  if (value >= 3) return 'Forming'
+  return 'Seed'
 }
