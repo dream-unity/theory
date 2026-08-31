@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "seed:export": "node --experimental-strip-types scripts/export-seed.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"

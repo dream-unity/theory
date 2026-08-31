@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
   ArrowRight,
   Check,
@@ -21,20 +21,78 @@ import type { GithubSession, RuntimeConfig, TheoryDocument, TheoryEdge, TheoryNo
 import { NODE_TYPES } from '../types'
 import { beginGithubOAuth, connectWithToken } from '../lib/github'
 
-function Modal({ title, eyebrow, children, onClose, wide = false }: { title: string; eyebrow?: string; children: ReactNode; onClose: () => void; wide?: boolean }) {
+function Modal({
+  title,
+  eyebrow,
+  children,
+  onClose,
+  wide = false,
+  dismissible = true,
+}: {
+  title: string
+  eyebrow?: string
+  children: ReactNode
+  onClose?: () => void
+  wide?: boolean
+  dismissible?: boolean
+}) {
   const ref = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+
   useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
+    const previouslyFocused = globalThis.document.activeElement instanceof HTMLElement ? globalThis.document.activeElement : null
+    const autofocusTarget = ref.current?.querySelector<HTMLElement>('[autofocus]')
+    ;(autofocusTarget ?? ref.current)?.focus()
+
+    return () => {
+      if (previouslyFocused?.isConnected) previouslyFocused.focus()
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      const openDialogs = globalThis.document.querySelectorAll<HTMLElement>('.modal-card')
+      if (openDialogs[openDialogs.length - 1] !== ref.current) return
+
+      if (event.key === 'Escape' && dismissible && onClose) {
+        event.preventDefault()
+        onClose()
+        return
+      }
+
+      if (event.key !== 'Tab' || !ref.current) return
+      const focusable = Array.from(ref.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true')
+
+      if (focusable.length === 0) {
+        event.preventDefault()
+        ref.current.focus()
+        return
+      }
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = globalThis.document.activeElement
+      if (event.shiftKey && (active === first || !ref.current.contains(active))) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (active === last || !ref.current.contains(active))) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
     window.addEventListener('keydown', handleKey)
-    ref.current?.focus()
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose])
+  }, [dismissible, onClose])
+
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <section className={`modal-card ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} ref={ref}>
+    <div className="modal-backdrop" role="presentation" onClick={(event) => { if (dismissible && onClose && event.target === event.currentTarget) onClose() }}>
+      <section className={`modal-card ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} ref={ref} data-dismissible={dismissible && Boolean(onClose)}>
         <header className="modal-header">
-          <div>{eyebrow && <span>{eyebrow}</span>}<h2>{title}</h2></div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button>
+          <div>{eyebrow && <span>{eyebrow}</span>}<h2 id={titleId}>{title}</h2></div>
+          {dismissible && onClose && <button type="button" className="icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button>}
         </header>
         {children}
       </section>
@@ -53,7 +111,7 @@ export function NewSeedDialog({ onClose, onCreate }: { onClose: () => void; onCr
     onCreate(title.trim(), type)
   }
   return (
-    <Modal title="Capture a new seed" eyebrow="Ether inbox" onClose={onClose}>
+    <Modal title="Capture a new seed" eyebrow="Theory inbox" onClose={onClose}>
       <form onSubmit={submit} className="modal-body form-stack">
         <p className="modal-lead">Capture first. Classification can mature later.</p>
         <label className="field-label">Seed title
@@ -212,18 +270,41 @@ export function RealiseDialog({ node, onClose, onCreate }: { node: TheoryNode; o
   )
 }
 
-export function ConflictDialog({ local, remote, onClose, onResolve }: { local: TheoryDocument; remote: TheoryDocument; onClose: () => void; onResolve: (choice: 'merge' | 'mine' | 'remote') => void }) {
+export function ConflictDialog({
+  local,
+  remote,
+  conflictingPaths,
+  onResolve,
+}: {
+  local: TheoryDocument
+  remote: TheoryDocument
+  conflictingPaths?: string[]
+  onClose: () => void
+  onResolve: (choice: 'merge' | 'mine' | 'remote') => void
+}) {
+  const overlapWarningId = useId()
+  const hasOverlaps = Boolean(conflictingPaths?.length)
+  const visibleOverlaps = conflictingPaths?.slice(0, 3) ?? []
+  const remainingOverlapCount = (conflictingPaths?.length ?? 0) - visibleOverlaps.length
+
   return (
-    <Modal title="Two versions are alive" eyebrow="GitHub conflict" onClose={onClose}>
+    <Modal title="Two versions are alive" eyebrow="GitHub conflict" dismissible={false}>
       <div className="modal-body form-stack">
         <p className="modal-lead">Nothing has been overwritten. This device and GitHub both remain intact until you decide.</p>
+        <p className="conflict-warning" role="note">Choose one explicit resolution to resume repository saving. Escape and backdrop clicks cannot dismiss this decision.</p>
         <div className="version-compare">
           <div><span>This device</span><strong>Revision {local.meta.revision}</strong><small>{new Date(local.meta.updatedAt).toLocaleString()}</small><small>{local.nodes.length} concepts · {local.edges.length} links</small></div>
           <div><span>GitHub</span><strong>Revision {remote.meta.revision}</strong><small>{new Date(remote.meta.updatedAt).toLocaleString()}</small><small>{remote.nodes.length} concepts · {remote.edges.length} links</small></div>
         </div>
-        <button type="button" className="resolution-option recommended" onClick={() => onResolve('merge')}><GitMerge size={19} /><div><strong>Merge by concept history</strong><span>Keep the newest version of each concept, relation and position. Recommended for independent edits.</span></div><ArrowRight size={17} /></button>
-        <button type="button" className="resolution-option" onClick={() => onResolve('mine')}><Cloud size={19} /><div><strong>Use this device</strong><span>Replace the GitHub theory file with the intact local atlas.</span></div><ArrowRight size={17} /></button>
-        <button type="button" className="resolution-option" onClick={() => onResolve('remote')}><Github size={19} /><div><strong>Use GitHub</strong><span>Preserve GitHub and replace the working atlas on this device.</span></div><ArrowRight size={17} /></button>
+        {hasOverlaps && (
+          <p className="conflict-warning" id={overlapWarningId} role="alert">
+            <strong>Safe merge is blocked.</strong>{' '}
+            Both versions changed the same field or have no usable common base: {visibleOverlaps.join(', ')}{remainingOverlapCount > 0 ? `, plus ${remainingOverlapCount} more` : ''}. Choose one complete version below.
+          </p>
+        )}
+        <button type="button" className="resolution-option" onClick={() => onResolve('mine')}><Cloud size={19} /><div><strong>Use this device</strong><span>Replace the GitHub theory file with the intact local atlas. The current GitHub version remains recoverable in repository history.</span></div><ArrowRight size={17} /></button>
+        <button type="button" className="resolution-option" onClick={() => onResolve('remote')}><Github size={19} /><div><strong>Use GitHub</strong><span>Replace the active working atlas on this device with GitHub. Current device-only differences will no longer be active.</span></div><ArrowRight size={17} /></button>
+        <button type="button" className="resolution-option" onClick={() => onResolve('merge')} disabled={hasOverlaps} aria-describedby={hasOverlaps ? overlapWarningId : undefined}><GitMerge size={19} /><div><strong>Base-aware safe merge</strong><span>Compare both versions with their common base, merge only independent field edits, and stop if the same field changed on both sides.</span></div><ArrowRight size={17} /></button>
       </div>
     </Modal>
   )
@@ -264,7 +345,7 @@ export function WelcomeDialog({ onClose }: { onClose: () => void }) {
           <div><span>02</span><GitMerge size={20} /><strong>Forge, don’t flatten</strong><p>Synthesis preserves sources, differences, tensions and omissions.</p></div>
           <div><span>03</span><FlaskConical size={20} /><strong>Cross into reality</strong><p>Turn claims into practices, predictions, observations and reflective updates.</p></div>
         </div>
-        <div className="welcome-footer"><p>Start anywhere. Double-click the Ether to capture a seed.</p><button type="button" className="primary-button" onClick={onClose}>Enter the atlas <ArrowRight size={16} /></button></div>
+        <div className="welcome-footer"><p>Start anywhere. Double-click open space to capture a seed.</p><button type="button" className="primary-button" onClick={onClose}>Enter the atlas <ArrowRight size={16} /></button></div>
       </div>
     </Modal>
   )

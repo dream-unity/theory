@@ -39,6 +39,7 @@ interface InspectorProps {
   onClose: () => void
   onArchive: (id: string) => void
   onRealise: (id: string) => void
+  onBeginRelation: (from: string, to: string) => void
 }
 
 const titleCase = (value: string) => value.replace(/-/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
@@ -54,8 +55,10 @@ export function Inspector({
   onClose,
   onArchive,
   onRealise,
+  onBeginRelation,
 }: InspectorProps) {
   const [tab, setTab] = useState<InspectorTab>(requestedTab ?? 'essence')
+  const [relationTargetId, setRelationTargetId] = useState('')
   useEffect(() => { if (requestedTab) setTab(requestedTab) }, [requestedTab])
   useEffect(() => { if (node) setTab(requestedTab ?? 'essence') }, [node?.id, requestedTab])
 
@@ -191,6 +194,22 @@ export function Inspector({
         {tab === 'relations' && (
           <div className="inspector-section-stack">
             <div className="section-intro"><GitBranch size={18} /><div><h3>Readable propositions</h3><p>Every line should state a relationship, not merely imply association.</p></div></div>
+            <div className="relation-builder">
+              <label className="field-label">Connect this idea to
+                <select value={relationTargetId} onChange={(event) => setRelationTargetId(event.target.value)}>
+                  <option value="">Choose another concept…</option>
+                  {document.nodes
+                    .filter((candidate) => candidate.id !== node.id && candidate.epistemics.stance !== 'archived')
+                    .sort((left, right) => left.title.localeCompare(right.title))
+                    .map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.title}</option>)}
+                </select>
+              </label>
+              <button type="button" className="secondary-button" disabled={!relationTargetId} onClick={() => {
+                if (!relationTargetId) return
+                onBeginRelation(node.id, relationTargetId)
+                setRelationTargetId('')
+              }}><Link2 size={15} /> Name relationship</button>
+            </div>
             {relations.length === 0 && <p className="empty-note">This idea is still an orphan. Drag from its connection handle to another idea.</p>}
             <ul className="relation-list">
               {relations.map((relation) => {
@@ -257,7 +276,7 @@ export function Inspector({
       <footer className="inspector-actions">
         <button type="button" onClick={() => onRealise(node.id)}><FlaskConical size={15} /> Realise</button>
         <button type="button" onClick={() => setTab('mirror')}><Sparkles size={15} /> Mirror</button>
-        <button type="button" onClick={() => onArchive(node.id)} disabled={node.epistemics.stance === 'archived'}><RotateCcw size={15} /> Return</button>
+        <button type="button" onClick={() => onArchive(node.id)}><RotateCcw size={15} /> {node.epistemics.stance === 'archived' ? 'Restore' : 'Return'}</button>
       </footer>
     </aside>
   )

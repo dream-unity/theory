@@ -9,10 +9,11 @@ import {
   GitMerge,
   Inbox,
   Layers3,
+  Link2,
   Search,
   Sparkles,
 } from 'lucide-react'
-import type { Portal, TheoryDocument, TheoryView } from '../types'
+import type { Portal, TheoryDocument, TheoryEdge, TheoryView } from '../types'
 
 interface OutlinePanelProps {
   document: TheoryDocument
@@ -23,6 +24,10 @@ interface OutlinePanelProps {
   visiblePortals: Set<string>
   onTogglePortal: (portal: Portal) => void
   onNewSeed: () => void
+  visibleEdgeFamilies?: Set<TheoryEdge['family']>
+  onToggleEdgeFamily?: (family: TheoryEdge['family']) => void
+  onStartRelation?: (sourceId: string) => void
+  onRequestClose?: () => void
 }
 
 const portalLabels: Record<Portal, string> = {
@@ -34,6 +39,17 @@ const portalLabels: Record<Portal, string> = {
 
 const portalIcons = { maker: Sparkles, machine: Layers3, world: FlaskConical, unity: GitMerge }
 
+const edgeFamilyLabels: Record<TheoryEdge['family'], string> = {
+  structure: 'Structure',
+  dynamics: 'Dynamics',
+  reasoning: 'Reasoning',
+  correspondence: 'Mirror',
+  integration: 'Integration',
+  provenance: 'Origins',
+}
+
+const edgeFamilies = Object.keys(edgeFamilyLabels) as TheoryEdge['family'][]
+
 export function OutlinePanel({
   document,
   currentView,
@@ -43,6 +59,10 @@ export function OutlinePanel({
   visiblePortals,
   onTogglePortal,
   onNewSeed,
+  visibleEdgeFamilies,
+  onToggleEdgeFamily,
+  onStartRelation,
+  onRequestClose,
 }: OutlinePanelProps) {
   const [query, setQuery] = useState('')
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['unity', 'maker', 'machine', 'world', 'ether']))
@@ -61,7 +81,7 @@ export function OutlinePanel({
   const groups = useMemo(() => {
     const value: Record<string, typeof filtered> = { unity: [], maker: [], machine: [], world: [], ether: [] }
     for (const node of filtered) {
-      const portal = node.facets.portals[0] ?? 'ether'
+      const portal = node.facets.portals.length > 1 ? 'unity' : node.facets.portals[0] ?? 'ether'
       value[portal].push(node)
     }
     for (const nodes of Object.values(value)) nodes.sort((a, b) => a.title.localeCompare(b.title))
@@ -78,6 +98,16 @@ export function OutlinePanel({
     returned: document.nodes.filter((node) => node.epistemics.stance === 'archived').length,
   }), [document.edges, document.nodes])
 
+  const viewEdgeFamilies = useMemo(() => new Set(currentView.visibleEdgeFamilies), [currentView.visibleEdgeFamilies])
+  const activeEdgeFamilies = visibleEdgeFamilies ?? viewEdgeFamilies
+  const edgeFamilyCounts = useMemo(() => {
+    const counts = Object.fromEntries(edgeFamilies.map((family) => [family, 0])) as Record<TheoryEdge['family'], number>
+    for (const edge of document.edges) {
+      if (included.has(edge.from) && included.has(edge.to)) counts[edge.family] += 1
+    }
+    return counts
+  }, [document.edges, included])
+
   const toggleGroup = (name: string) => {
     setOpenGroups((current) => {
       const next = new Set(current)
@@ -85,6 +115,27 @@ export function OutlinePanel({
       else next.add(name)
       return next
     })
+  }
+
+  const selectView = (id: string) => {
+    onSelectView(id)
+    onRequestClose?.()
+  }
+
+  const selectNode = (id: string) => {
+    onSelectNode(id)
+    onRequestClose?.()
+  }
+
+  const createSeed = () => {
+    onNewSeed()
+    onRequestClose?.()
+  }
+
+  const startRelation = () => {
+    if (!selectedNodeId || !onStartRelation) return
+    onStartRelation(selectedNodeId)
+    onRequestClose?.()
   }
 
   return (
@@ -98,8 +149,9 @@ export function OutlinePanel({
                 key={view.id}
                 type="button"
                 className={`view-button ${view.id === currentView.id ? 'active' : ''}`}
-                onClick={() => onSelectView(view.id)}
+                onClick={() => selectView(view.id)}
                 title={view.focusQuestion}
+                aria-current={view.id === currentView.id ? 'page' : undefined}
               >
                 <Eye size={14} aria-hidden="true" />
                 <span>{view.title}</span>
@@ -141,8 +193,34 @@ export function OutlinePanel({
           </div>
         </section>
 
+        {onToggleEdgeFamily && (
+          <section className="rail-section">
+            <div className="rail-heading-row">
+              <p className="rail-label">Relation layers</p>
+              <span>{activeEdgeFamilies.size}/6</span>
+            </div>
+            <div className="relation-family-filters" role="group" aria-label="Visible relationship families">
+              {edgeFamilies.map((family) => {
+                const active = activeEdgeFamilies.has(family)
+                return (
+                  <button
+                    type="button"
+                    key={family}
+                    className={`relation-family-filter family-${family} ${active ? 'active' : ''}`}
+                    onClick={() => onToggleEdgeFamily(family)}
+                    aria-pressed={active}
+                  >
+                    <span>{edgeFamilyLabels[family]}</span><small>{edgeFamilyCounts[family]}</small>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         <section className="rail-section theory-spine-section">
           <div className="rail-heading-row"><p className="rail-label">Theory spine</p><span>{filtered.length}</span></div>
+          <span className="sr-only" role="status" aria-live="polite">{filtered.length} ideas in the current theory spine</span>
           <label className="rail-search">
             <Search size={15} aria-hidden="true" />
             <span className="sr-only">Search current theory view</span>
@@ -151,7 +229,7 @@ export function OutlinePanel({
 
           {(['unity', 'maker', 'machine', 'world', 'ether'] as const).map((group) => {
             const GroupIcon = group === 'ether' ? Inbox : portalIcons[group]
-            const label = group === 'ether' ? 'Ether / Unplaced' : portalLabels[group]
+            const label = group === 'ether' ? 'Inbox / Unplaced' : group === 'unity' ? 'Unity / Bridge' : portalLabels[group]
             return (
               <div className="spine-group" key={group}>
                 <button type="button" className="spine-group-heading" onClick={() => toggleGroup(group)} aria-expanded={openGroups.has(group)}>
@@ -167,7 +245,7 @@ export function OutlinePanel({
                         <button
                           type="button"
                           className={node.id === selectedNodeId ? 'selected' : ''}
-                          onClick={() => onSelectNode(node.id)}
+                          onClick={() => selectNode(node.id)}
                         >
                           <span className={`node-type-dot type-${node.type}`} aria-hidden="true" />
                           <span>{node.title}</span>
@@ -181,9 +259,16 @@ export function OutlinePanel({
           })}
         </section>
       </div>
-      <button type="button" className="new-seed-button" onClick={onNewSeed}>
-        <Sparkles size={16} /> New seed <kbd>N</kbd>
-      </button>
+      <div className="outline-actions">
+        {selectedNodeId && onStartRelation && (
+          <button type="button" className="rail-connect-button" onClick={startRelation}>
+            <Link2 size={16} aria-hidden="true" /> Connect selected idea
+          </button>
+        )}
+        <button type="button" className="new-seed-button" onClick={createSeed}>
+          <Sparkles size={16} aria-hidden="true" /> New seed <kbd>N</kbd>
+        </button>
+      </div>
     </aside>
   )
 }

@@ -36,10 +36,7 @@
           "realisation",
           "return"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "core",
           "unity"
@@ -50,16 +47,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -83,10 +79,7 @@
           "ether",
           "return"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "origin"
         ]
@@ -96,16 +89,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -129,10 +121,7 @@
         "phases": [
           "compression"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "transformation"
         ]
@@ -142,16 +131,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -175,10 +163,7 @@
         "phases": [
           "synthesis"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "transformation"
         ]
@@ -188,16 +173,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -221,10 +205,7 @@
         "phases": [
           "realisation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "embodiment"
         ]
@@ -234,16 +215,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -267,10 +247,7 @@
           "reflection",
           "return"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "origin"
         ]
@@ -280,16 +257,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -312,10 +288,7 @@
         "phases": [
           "formation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "architecture"
         ]
@@ -325,16 +298,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -358,10 +330,7 @@
           "compression",
           "synthesis"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "architecture"
         ]
@@ -371,16 +340,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -404,10 +372,7 @@
           "realisation",
           "reflection"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "architecture"
         ]
@@ -417,16 +382,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -449,10 +413,7 @@
         "phases": [
           "formation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "forms"
         ]
@@ -462,16 +423,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -495,10 +455,7 @@
           "compression",
           "synthesis"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "forms"
         ]
@@ -508,16 +465,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -540,10 +496,7 @@
         "phases": [
           "realisation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "forms"
         ]
@@ -553,16 +506,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -585,10 +537,7 @@
         "phases": [
           "formation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "freedom"
         ]
@@ -598,16 +547,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -633,10 +581,7 @@
           "formation",
           "realisation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "freedom"
         ]
@@ -646,16 +591,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -681,10 +625,7 @@
           "formation",
           "realisation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "freedom"
         ]
@@ -694,16 +635,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -727,10 +667,7 @@
           "ether",
           "formation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "creation"
         ]
@@ -740,16 +677,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -774,10 +710,7 @@
         "phases": [
           "reflection"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "mirror",
           "freedom"
@@ -788,8 +721,7 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
@@ -802,10 +734,10 @@
         "restoringAction": "Reconnect representation to a chosen embodied act and test whether agency increases."
       },
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -830,10 +762,7 @@
         "phases": [
           "reflection"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "mirror",
           "freedom"
@@ -844,16 +773,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -878,10 +806,7 @@
         "phases": [
           "reflection"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "mirror",
           "freedom"
@@ -892,16 +817,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -924,10 +848,7 @@
         "phases": [
           "formation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "freedom"
         ]
@@ -937,16 +858,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -973,10 +893,7 @@
           "synthesis",
           "realisation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "freedom",
           "creation"
@@ -987,16 +904,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1020,10 +936,7 @@
         "phases": [
           "reflection"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "freedom"
         ]
@@ -1033,16 +946,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1066,10 +978,7 @@
         "phases": [
           "realisation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "embodiment",
           "freedom"
@@ -1080,16 +989,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1115,10 +1023,7 @@
           "formation",
           "realisation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "training"
         ]
@@ -1128,16 +1033,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "design",
-          "phenomenological"
+          "design"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1161,10 +1065,7 @@
           "compression",
           "synthesis"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "training"
         ]
@@ -1174,16 +1075,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "design",
-          "phenomenological"
+          "design"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1208,10 +1108,7 @@
           "synthesis",
           "realisation"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "training",
           "strategy"
@@ -1222,16 +1119,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1256,10 +1152,7 @@
           "compression",
           "synthesis"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "method"
         ]
@@ -1269,16 +1162,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "design",
-          "phenomenological"
+          "design"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1303,10 +1195,7 @@
         "phases": [
           "reflection"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "method",
           "mirror"
@@ -1317,16 +1206,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "design",
-          "phenomenological"
+          "design"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1351,10 +1239,7 @@
           "realisation",
           "reflection"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "method",
           "embodiment"
@@ -1365,16 +1250,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "design",
-          "phenomenological"
+          "design"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1398,10 +1282,7 @@
           "compression",
           "synthesis"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "open-question"
         ]
@@ -1411,16 +1292,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1444,10 +1324,7 @@
         "phases": [
           "reflection"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "tension",
           "freedom"
@@ -1458,16 +1335,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1477,8 +1353,8 @@
       "slug": "ghost-essay",
       "type": "document",
       "title": "The Ghost in the Mirror — Of Slavery and Freedom",
-      "essence": "The founding essay framing primality, material inversion, sovereignty, wisdom and embodied agency.",
-      "bodyMarkdown": "",
+      "essence": "A named source awaiting attachment of the author’s canonical text before its claims can be treated as grounded.",
+      "bodyMarkdown": "## Source required\n\nThe founding text was not supplied to this repository. Attach the canonical essay, URL, or immutable content hash here before accepting relations derived from it.",
       "aliases": [],
       "facets": {
         "portals": [
@@ -1492,10 +1368,7 @@
         "phases": [
           "reflection"
         ],
-        "scales": [
-          "self",
-          "collective"
-        ],
+        "scales": [],
         "topics": [
           "source",
           "mirror"
@@ -1506,16 +1379,15 @@
         "stance": "provisional",
         "confidence": "unknown",
         "knowledgeModes": [
-          "interpretive",
-          "symbolic"
+          "speculative"
         ]
       },
       "sources": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1532,10 +1404,10 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
@@ -1550,16 +1422,52 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
       "id": "edge-3",
+      "from": "consciousness-forms",
+      "to": "compression",
+      "relation": "are distilled by",
+      "family": "dynamics",
+      "rationale": "",
+      "status": "proposed",
+      "evidenceIds": [],
+      "provenance": {
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
+        "createdAt": "2026-08-31T00:00:00.000Z",
+        "updatedBy": "OpenAI research synthesis",
+        "updatedAt": "2026-08-31T00:00:00.000Z",
+        "derivedFrom": []
+      }
+    },
+    {
+      "id": "edge-4",
+      "from": "compression",
+      "to": "relational-forms",
+      "relation": "reveals reusable relations as",
+      "family": "dynamics",
+      "rationale": "",
+      "status": "proposed",
+      "evidenceIds": [],
+      "provenance": {
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
+        "createdAt": "2026-08-31T00:00:00.000Z",
+        "updatedBy": "OpenAI research synthesis",
+        "updatedAt": "2026-08-31T00:00:00.000Z",
+        "derivedFrom": []
+      }
+    },
+    {
+      "id": "edge-5",
       "from": "consciousness-forms",
       "to": "relational-forms",
       "relation": "become intelligible through",
@@ -1568,16 +1476,52 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-4",
+      "id": "edge-6",
+      "from": "relational-forms",
+      "to": "synthesis",
+      "relation": "are integrated by",
+      "family": "integration",
+      "rationale": "",
+      "status": "proposed",
+      "evidenceIds": [],
+      "provenance": {
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
+        "createdAt": "2026-08-31T00:00:00.000Z",
+        "updatedBy": "OpenAI research synthesis",
+        "updatedAt": "2026-08-31T00:00:00.000Z",
+        "derivedFrom": []
+      }
+    },
+    {
+      "id": "edge-7",
+      "from": "synthesis",
+      "to": "strategic-forms",
+      "relation": "organises relations into",
+      "family": "integration",
+      "rationale": "",
+      "status": "proposed",
+      "evidenceIds": [],
+      "provenance": {
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
+        "createdAt": "2026-08-31T00:00:00.000Z",
+        "updatedBy": "OpenAI research synthesis",
+        "updatedAt": "2026-08-31T00:00:00.000Z",
+        "derivedFrom": []
+      }
+    },
+    {
+      "id": "edge-8",
       "from": "relational-forms",
       "to": "strategic-forms",
       "relation": "inform",
@@ -1586,16 +1530,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-5",
+      "id": "edge-9",
       "from": "strategic-forms",
       "to": "realisation",
       "relation": "direct",
@@ -1604,16 +1548,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-6",
+      "id": "edge-10",
       "from": "realisation",
       "to": "return",
       "relation": "is reflected through",
@@ -1622,16 +1566,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-7",
+      "id": "edge-11",
       "from": "return",
       "to": "ether",
       "relation": "reopens",
@@ -1640,16 +1584,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-8",
+      "id": "edge-12",
       "from": "dream-maker",
       "to": "consciousness-forms",
       "relation": "cultivates",
@@ -1658,16 +1602,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-9",
+      "id": "edge-13",
       "from": "dream-machine",
       "to": "relational-forms",
       "relation": "operates through",
@@ -1676,16 +1620,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-10",
+      "id": "edge-14",
       "from": "dream-world",
       "to": "strategic-forms",
       "relation": "embodies",
@@ -1694,16 +1638,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-11",
+      "id": "edge-15",
       "from": "compression",
       "to": "synthesis",
       "relation": "prepares",
@@ -1712,16 +1656,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-12",
+      "id": "edge-16",
       "from": "synthesis",
       "to": "realisation",
       "relation": "makes coherent for",
@@ -1730,16 +1674,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-13",
+      "id": "edge-17",
       "from": "primality",
       "to": "agency",
       "relation": "expresses itself through",
@@ -1748,16 +1692,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-14",
+      "id": "edge-18",
       "from": "agency",
       "to": "sovereignty",
       "relation": "develops into",
@@ -1766,16 +1710,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-15",
+      "id": "edge-19",
       "from": "imagination",
       "to": "creative-freedom",
       "relation": "supplies possibility to",
@@ -1784,16 +1728,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-16",
+      "id": "edge-20",
       "from": "agency",
       "to": "creative-freedom",
       "relation": "enables",
@@ -1802,16 +1746,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-17",
+      "id": "edge-21",
       "from": "wisdom",
       "to": "creative-freedom",
       "relation": "governs",
@@ -1820,16 +1764,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-18",
+      "id": "edge-22",
       "from": "material-inversion",
       "to": "ghost-mirror",
       "relation": "produces",
@@ -1838,16 +1782,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-19",
+      "id": "edge-23",
       "from": "ghost-mirror",
       "to": "domestication",
       "relation": "governs impulse through",
@@ -1856,16 +1800,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-20",
+      "id": "edge-24",
       "from": "domestication",
       "to": "primality",
       "relation": "constrains",
@@ -1874,16 +1818,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-21",
+      "id": "edge-25",
       "from": "inner-light",
       "to": "agency",
       "relation": "orients",
@@ -1892,16 +1836,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-22",
+      "id": "edge-26",
       "from": "embodied-awareness",
       "to": "agency",
       "relation": "tests",
@@ -1910,16 +1854,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-23",
+      "id": "edge-27",
       "from": "tension-freedom-constraint",
       "to": "embodied-awareness",
       "relation": "is explored by",
@@ -1928,16 +1872,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-24",
+      "id": "edge-28",
       "from": "ghost-essay",
       "to": "ghost-mirror",
       "relation": "articulates",
@@ -1946,16 +1890,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-25",
+      "id": "edge-29",
       "from": "ghost-essay",
       "to": "primality",
       "relation": "defines",
@@ -1964,16 +1908,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-26",
+      "id": "edge-30",
       "from": "ghost-essay",
       "to": "sovereignty",
       "relation": "connects to",
@@ -1982,16 +1926,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-27",
+      "id": "edge-31",
       "from": "become",
       "to": "consciousness-forms",
       "relation": "trains deliberate control of",
@@ -2000,16 +1944,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-28",
+      "id": "edge-32",
       "from": "relational-training",
       "to": "relational-forms",
       "relation": "trains",
@@ -2018,16 +1962,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-29",
+      "id": "edge-33",
       "from": "action-cycle",
       "to": "strategic-forms",
       "relation": "operationalises",
@@ -2036,16 +1980,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-30",
+      "id": "edge-34",
       "from": "unity-forge",
       "to": "synthesis",
       "relation": "operationalises",
@@ -2054,16 +1998,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-31",
+      "id": "edge-35",
       "from": "mirror-test",
       "to": "ghost-mirror",
       "relation": "diagnoses",
@@ -2072,16 +2016,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-32",
+      "id": "edge-36",
       "from": "reality-bridge",
       "to": "realisation",
       "relation": "operationalises",
@@ -2090,16 +2034,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-33",
+      "id": "edge-37",
       "from": "question-unification",
       "to": "synthesis",
       "relation": "challenges",
@@ -2108,16 +2052,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-34",
+      "id": "edge-38",
       "from": "dream-maker",
       "to": "unity-core",
       "relation": "contributes inner possibility to",
@@ -2126,16 +2070,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-35",
+      "id": "edge-39",
       "from": "dream-machine",
       "to": "unity-core",
       "relation": "contributes relational coherence to",
@@ -2144,16 +2088,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-36",
+      "id": "edge-40",
       "from": "dream-world",
       "to": "unity-core",
       "relation": "contributes embodiment to",
@@ -2162,16 +2106,16 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }
     },
     {
-      "id": "edge-37",
+      "id": "edge-41",
       "from": "unity-core",
       "to": "return",
       "relation": "completes its cycle through",
@@ -2180,10 +2124,10 @@
       "status": "proposed",
       "evidenceIds": [],
       "provenance": {
-        "origin": "human",
-        "createdBy": "Dream Unity",
+        "origin": "ai-proposed",
+        "createdBy": "OpenAI research synthesis",
         "createdAt": "2026-08-31T00:00:00.000Z",
-        "updatedBy": "Dream Unity",
+        "updatedBy": "OpenAI research synthesis",
         "updatedAt": "2026-08-31T00:00:00.000Z",
         "derivedFrom": []
       }

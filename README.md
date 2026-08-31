@@ -15,7 +15,7 @@ A living, editable knowledge atlas for Dream Unity. It combines a stable spatial
 - `Return to Ether`: reversible archival rather than destructive deletion
 - Immediate IndexedDB persistence, offline-safe local edits, undo/redo, JSON import/export
 - Serialized, debounced GitHub checkpoints with SHA conflict detection and an explicit review flow
-- Five seeded focus maps and a carefully typed initial Dream Unity ontology
+- Five focus maps and an explicitly `ai-proposed` starting ontology for author review
 - Responsive mobile drawers, 44px-class primary touch controls, reduced-motion and increased-contrast support
 
 ## Run locally
@@ -43,13 +43,13 @@ For the owner-only version, choose **Connect** and provide a fine-grained GitHub
 2. Has **Contents: Read and write**.
 3. Has an expiry.
 
-The token is kept in session storage only, is never placed in IndexedDB or theory JSON, and disappears when the browser tab is closed. Every edit first saves locally; GitHub writes are coalesced after a quiet period and serialized onto the `theory-live` branch. This avoids rebuilding the website after every checkpoint. A stale SHA pauses sync and preserves both versions for review.
+The token is kept in session storage only, is never placed in IndexedDB or theory JSON, and disappears when the browser tab is closed. Every edit first enters a serialized local-save queue; GitHub writes are coalesced and serialized onto the `theory-live` branch. This avoids rebuilding the website after every checkpoint. The last synced SHA and full common ancestor are stored locally without the token. Divergence pauses sync, retains recovery backups, and offers a base-aware merge only when independent fields can be combined without guessing.
 
 For shared real-time editing, use the production evolution described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): a repository-scoped GitHub App, trusted authentication/sync service, granular Yjs document, IndexedDB offline cache, and GitHub as a human-readable checkpoint layer.
 
 ## Data model
 
-The canonical snapshot is [`public/data/theory.json`](public/data/theory.json). Positions belong to views rather than concepts, so the same concept can occupy a useful location in Whole Theory, Mirror & Freedom, Three Forms, and other maps without creating competing copies.
+The published working snapshot is [`public/data/theory.json`](public/data/theory.json). Its starting material was synthesized from the Dream Unity project context available during implementation and is marked `ai-proposed`, provisional, and confidence-unknown—not silently presented as Michael's accepted canon. The named founding essay remains source-pending until its canonical text or immutable locator is attached. Positions belong to views rather than concepts, so the same concept can occupy a useful location in Whole Theory, Mirror & Freedom, Three Forms, and other maps without creating competing copies.
 
 Core entities:
 

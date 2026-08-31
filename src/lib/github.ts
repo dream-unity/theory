@@ -1,7 +1,20 @@
 import type { GithubSession, RuntimeConfig, TheoryDocument } from '../types'
 import { validateDocument } from './theory'
+import { documentsEqual } from './local-store'
 
 const API = 'https://api.github.com'
+
+export class GithubApiError extends Error {
+  readonly status?: number
+  readonly retryable: boolean
+
+  constructor(message: string, status?: number) {
+    super(message)
+    this.name = 'GithubApiError'
+    this.status = status
+    this.retryable = status === undefined || status === 408 || status === 429 || (status >= 500 && status <= 599)
+  }
+}
 
 const headers = (token?: string) => ({
   Accept: 'application/vnd.github+json',
@@ -23,6 +36,39 @@ const decodeBase64 = (value: string) => {
   const binary = atob(value.replace(/\n/g, ''))
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
   return new TextDecoder().decode(bytes)
+}
+
+function repositoryParts(repository: string): [string, string] {
+  const parts = repository.split('/')
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new GithubApiError(`The repository target "${repository}" must use owner/name form.`)
+  }
+  return [parts[0], parts[1]]
+}
+
+async function responseMessage(response: Response, fallback: string) {
+  const details = (await response.json().catch(() => null)) as { message?: string } | null
+  return details?.message ?? fallback
+}
+
+async function assertBranchExists(
+  target: Pick<GithubSession, 'token' | 'repository' | 'branch'>,
+): Promise<void> {
+  const [owner, repository] = repositoryParts(target.repository)
+  const branchUrl = `${API}/repos/${owner}/${repository}/branches/${encodeURIComponent(target.branch)}`
+  const response = await fetch(branchUrl, { headers: headers(target.token), cache: 'no-store' })
+  if (response.status === 404) {
+    throw new GithubApiError(
+      `The GitHub branch "${target.branch}" does not exist in ${target.repository}. Create it from the main branch, then reconnect.`,
+      404,
+    )
+  }
+  if (!response.ok) {
+    throw new GithubApiError(
+      await responseMessage(response, `GitHub could not verify branch "${target.branch}" (${response.status}).`),
+      response.status,
+    )
+  }
 }
 
 export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
@@ -50,7 +96,7 @@ export async function connectWithToken(token: string, config: RuntimeConfig): Pr
   if (!repository.permissions?.push) {
     throw new Error('This token can read the repository but cannot write to it. Grant Contents: Read and write.')
   }
-  return {
+  const session: GithubSession = {
     token,
     login: user.login,
     avatarUrl: user.avatar_url,
@@ -58,6 +104,8 @@ export async function connectWithToken(token: string, config: RuntimeConfig): Pr
     branch: config.branch,
     dataPath: config.dataPath,
   }
+  await assertBranchExists(session)
+  return session
 }
 
 export interface RemoteFile {
@@ -68,11 +116,48 @@ export interface RemoteFile {
 export async function fetchTheoryFile(session: GithubSession): Promise<RemoteFile> {
   const url = `${API}/repos/${session.repository}/contents/${session.dataPath}?ref=${encodeURIComponent(session.branch)}`
   const response = await fetch(url, { headers: headers(session.token), cache: 'no-store' })
-  if (response.status === 404) return { document: null }
-  if (!response.ok) throw new Error(`GitHub could not load the theory file (${response.status}).`)
-  const payload = (await response.json()) as { content?: string; sha?: string }
-  if (!payload.content) return { document: null, sha: payload.sha }
-  const parsed: unknown = JSON.parse(decodeBase64(payload.content))
+  if (response.status === 404) {
+    // The Contents endpoint uses 404 for both an absent file and an absent branch.
+    // Only the former is a valid first-save state.
+    await assertBranchExists(session)
+    return { document: null }
+  }
+  if (!response.ok) {
+    throw new GithubApiError(
+      await responseMessage(response, `GitHub could not load the theory file (${response.status}).`),
+      response.status,
+    )
+  }
+  const payload = (await response.json()) as { content?: string; encoding?: string; sha?: string; type?: string }
+  if (payload.type && payload.type !== 'file') {
+    throw new GithubApiError(`The GitHub data path "${session.dataPath}" is not a file.`)
+  }
+  if (!payload.sha) throw new GithubApiError('GitHub returned the theory file without a revision identifier.')
+
+  let source: string
+  if (payload.content && payload.encoding !== 'none') {
+    source = decodeBase64(payload.content)
+  } else {
+    // GitHub intentionally omits base64 content once a file exceeds 1 MB.
+    const rawResponse = await fetch(url, {
+      headers: { ...headers(session.token), Accept: 'application/vnd.github.raw+json' },
+      cache: 'no-store',
+    })
+    if (!rawResponse.ok) {
+      throw new GithubApiError(
+        await responseMessage(rawResponse, `GitHub could not load the full theory file (${rawResponse.status}).`),
+        rawResponse.status,
+      )
+    }
+    source = await rawResponse.text()
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(source)
+  } catch {
+    throw new GithubApiError('The repository theory file is not valid JSON.')
+  }
   if (!validateDocument(parsed)) throw new Error('The repository theory file has an unsupported structure.')
   return { document: parsed, sha: payload.sha }
 }
@@ -91,12 +176,13 @@ export async function saveTheoryFile(
   if (sha === undefined) {
     const current = await fetchTheoryFile(session)
     sha = current.sha
-    if (current.document && current.document.meta.updatedAt > document.meta.updatedAt) {
+    if (current.document && !documentsEqual(current.document, document)) {
       return { kind: 'conflict', remote: current.document, sha: current.sha as string }
     }
+    if (current.document && current.sha) return { kind: 'saved', sha: current.sha }
   }
 
-  const [owner, repository] = session.repository.split('/')
+  const [owner, repository] = repositoryParts(session.repository)
   const url = `${API}/repos/${owner}/${repository}/contents/${session.dataPath}`
   const body = {
     message: `theory: checkpoint ${new Date().toISOString().replace(/:\d{2}\.\d{3}Z$/, 'Z')}`,
@@ -110,14 +196,26 @@ export async function saveTheoryFile(
     body: JSON.stringify(body),
   })
 
-  if (response.status === 409 || response.status === 422) {
+  if (response.status === 409) {
     const remote = await fetchTheoryFile(session)
     if (!remote.document || !remote.sha) throw new Error('GitHub reported a conflict, but its current theory file could not be read.')
     return { kind: 'conflict', remote: remote.document, sha: remote.sha }
   }
   if (!response.ok) {
-    const details = (await response.json().catch(() => null)) as { message?: string } | null
-    throw new Error(details?.message ?? `GitHub save failed (${response.status}).`)
+    const message = await responseMessage(response, `GitHub save failed (${response.status}).`)
+    if (response.status === 422) {
+      throw new GithubApiError(
+        `GitHub rejected the checkpoint for branch "${session.branch}": ${message}. Verify that the branch exists and accepts direct content updates.`,
+        response.status,
+      )
+    }
+    if (response.status === 403) {
+      throw new GithubApiError(
+        `GitHub refused the checkpoint: ${message}. Check token expiry, Contents: write permission, and branch rules for "${session.branch}".`,
+        response.status,
+      )
+    }
+    throw new GithubApiError(message, response.status)
   }
   const payload = (await response.json()) as { content?: { sha?: string } }
   const nextSha = payload.content?.sha

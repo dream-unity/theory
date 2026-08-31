@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TD
     A["Edit in browser"] --> B["React state"]
-    B --> C["IndexedDB in 250 ms"]
+    B --> C["Serialized IndexedDB queue"]
     B --> D["Debounced checkpoint queue"]
     D --> E["GitHub Contents API"]
     E --> F["theory-live / public/data/theory.json"]
@@ -14,14 +14,15 @@ flowchart TD
 
 The first durability boundary is the local device. GitHub is a serialized checkpoint layer, not a keystroke database.
 
-- Local persistence: 250 ms debounce
+- Local persistence: 250 ms idle target, 2 second maximum wait during continuous input
 - GitHub idle debounce: 6 seconds
 - Minimum checkpoint interval: 15 seconds
+- GitHub maximum dirty wait: 30 seconds
 - Token: fine-grained, repository-limited, session storage only
 - Data branch: `theory-live` (does not trigger the Pages deployment workflow)
 - Concurrency: one outbound write at a time
-- Optimistic locking: GitHub blob SHA
-- Conflict: stop, retain both, offer merge / local / GitHub review choices
+- Optimistic locking: GitHub blob SHA plus a locally persisted common ancestor
+- Conflict: stop, back up both, permit three-way merging only for non-overlapping fields, or choose an explicit full version
 - Normal deletion: reversible archive (`Return to Ether`)
 
 This is appropriate for one primary editor. It is not a safe anonymous-write architecture.
@@ -69,7 +70,7 @@ An externally modified canonical theory file must not be silently resolved by ti
 
 ## Deployment
 
-The included GitHub Actions workflow builds Vite with base `/theory/` and deploys `dist/` to GitHub Pages. It requests only:
+The included GitHub Actions workflow builds Vite with base `/theory/` and deploys `dist/` to GitHub Pages after Pages has been enabled for the repository. It requests only:
 
 - `contents: read`
 - `pages: write`

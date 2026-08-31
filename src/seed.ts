@@ -219,8 +219,9 @@ const seedNodes: SeedNode[] = [
   {
     id: 'ghost-essay',
     title: 'The Ghost in the Mirror — Of Slavery and Freedom',
-    essence: 'The founding essay framing primality, material inversion, sovereignty, wisdom and embodied agency.',
+    essence: 'A named source awaiting attachment of the author’s canonical text before its claims can be treated as grounded.',
     type: 'document', portals: ['maker', 'unity'], forms: ['consciousness', 'relational'], phases: ['reflection'], topics: ['source', 'mirror'],
+    body: '## Source required\n\nThe founding text was not supplied to this repository. Attach the canonical essay, URL, or immutable content hash here before accepting relations derived from it.',
   },
 ]
 
@@ -229,7 +230,11 @@ type SeedEdge = [string, string, string, TheoryEdge['family'], string?]
 const seedEdges: SeedEdge[] = [
   ['ether', 'imagination', 'gives rise to', 'dynamics'],
   ['imagination', 'consciousness-forms', 'forms', 'dynamics'],
+  ['consciousness-forms', 'compression', 'are distilled by', 'dynamics'],
+  ['compression', 'relational-forms', 'reveals reusable relations as', 'dynamics'],
   ['consciousness-forms', 'relational-forms', 'become intelligible through', 'dynamics'],
+  ['relational-forms', 'synthesis', 'are integrated by', 'integration'],
+  ['synthesis', 'strategic-forms', 'organises relations into', 'integration'],
   ['relational-forms', 'strategic-forms', 'inform', 'dynamics'],
   ['strategic-forms', 'realisation', 'direct', 'dynamics'],
   ['realisation', 'return', 'is reflected through', 'dynamics'],
@@ -278,14 +283,14 @@ const node = (seed: SeedNode): TheoryNode => ({
     portals: seed.portals ?? [],
     forms: seed.forms ?? [],
     phases: seed.phases ?? [],
-    scales: ['self', 'collective'],
+    scales: [],
     topics: seed.topics ?? [],
   },
   epistemics: {
     maturity: seed.id === 'unity-core' ? 'integrated' : 'articulated',
     stance: 'provisional',
     confidence: 'unknown',
-    knowledgeModes: seed.type === 'practice' ? ['design', 'phenomenological'] : ['interpretive', 'symbolic'],
+    knowledgeModes: seed.type === 'practice' ? ['design'] : ['speculative'],
   },
   sources: [],
   mirror: seed.id === 'ghost-mirror' ? {
@@ -297,8 +302,8 @@ const node = (seed: SeedNode): TheoryNode => ({
     restoringAction: 'Reconnect representation to a chosen embodied act and test whether agency increases.',
   } : undefined,
   provenance: {
-    origin: 'human', createdBy: 'Dream Unity', createdAt: CREATED,
-    updatedBy: 'Dream Unity', updatedAt: CREATED, derivedFrom: [],
+    origin: 'ai-proposed', createdBy: 'OpenAI research synthesis', createdAt: CREATED,
+    updatedBy: 'OpenAI research synthesis', updatedAt: CREATED, derivedFrom: [],
   },
 })
 
@@ -312,8 +317,8 @@ const edge = ([from, to, relation, family, rationale]: SeedEdge, index: number):
   status: 'proposed',
   evidenceIds: [],
   provenance: {
-    origin: 'human', createdBy: 'Dream Unity', createdAt: CREATED,
-    updatedBy: 'Dream Unity', updatedAt: CREATED, derivedFrom: [],
+    origin: 'ai-proposed', createdBy: 'OpenAI research synthesis', createdAt: CREATED,
+    updatedBy: 'OpenAI research synthesis', updatedAt: CREATED, derivedFrom: [],
   },
 })
 

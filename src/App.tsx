@@ -19,7 +19,7 @@ import { OutlinePanel } from './components/OutlinePanel'
 import { TheoryCanvas } from './components/TheoryCanvas'
 import { useAutosave } from './hooks/useAutosave'
 import { completeGithubOAuth, connectWithToken, loadRuntimeConfig } from './lib/github'
-import { clearSession, loadSession, resolveInitialDocument, saveSession } from './lib/local-store'
+import { clearSession, loadSession, resolveInitialDocument, saveLocalBackup, saveSession } from './lib/local-store'
 import {
   addEdge,
   addNodeToView,
@@ -50,13 +50,14 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [focusDepth, setFocusDepth] = useState<0 | 1 | 2>(0)
   const [visiblePortals, setVisiblePortals] = useState<Set<string>>(new Set(['maker', 'machine', 'world', 'unity']))
-  const [leftOpen, setLeftOpen] = useState(true)
-  const [rightOpen, setRightOpen] = useState(true)
+  const [leftOpen, setLeftOpen] = useState(() => window.matchMedia('(min-width: 980px)').matches)
+  const [rightOpen, setRightOpen] = useState(() => window.matchMedia('(min-width: 980px)').matches)
   const [modal, setModal] = useState<ModalName>(() => localStorage.getItem(WELCOME_KEY) ? null : 'welcome')
   const [inspectorTab, setInspectorTab] = useState<'essence' | 'relations' | 'grounding' | 'mirror'>('essence')
   const [seedPosition, setSeedPosition] = useState<{ x: number; y: number }>({ x: -50, y: -760 })
   const [pendingConnection, setPendingConnection] = useState<{ from: string; to: string } | null>(null)
   const [realiseNodeId, setRealiseNodeId] = useState<string | null>(null)
+  const actor = session ? `@${session.login}` : 'Local Dream Unity editor'
   const undoStack = useRef<TheoryDocument[]>([])
   const redoStack = useRef<TheoryDocument[]>([])
   const lastHistoryAt = useRef(0)
@@ -130,6 +131,7 @@ export default function App() {
     if (id) {
       setSelectedIds([id])
       setRightOpen(true)
+      if (window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false)
     }
   }, [])
 
@@ -163,10 +165,10 @@ export default function App() {
   }, [mutate, viewId])
 
   const createSeed = useCallback((title: string, type: TheoryNodeType) => {
-    const node = createNode(title, type)
+    const node = createNode(title, type, [], actor)
     addCanonicalNode(node, seedPosition)
     setModal(null)
-  }, [addCanonicalNode, seedPosition])
+  }, [actor, addCanonicalNode, seedPosition])
 
   const openSeed = useCallback((position?: { x: number; y: number }) => {
     if (position) setSeedPosition(position)
@@ -179,13 +181,13 @@ export default function App() {
 
   const createRelation = useCallback((relation: string, family: TheoryEdge['family']) => {
     if (!pendingConnection) return
-    const edge = createEdge(pendingConnection.from, pendingConnection.to, relation, family)
+    const edge = createEdge(pendingConnection.from, pendingConnection.to, relation, family, actor)
     mutate((current) => addEdge(current, edge))
     setPendingConnection(null)
     setSelectedEdgeId(edge.id)
     setSelectedNodeId(null)
     setRightOpen(true)
-  }, [mutate, pendingConnection])
+  }, [actor, mutate, pendingConnection])
 
   const connect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target || connection.source === connection.target) return
@@ -193,17 +195,17 @@ export default function App() {
   }, [])
 
   const updateNode = useCallback((node: TheoryNode) => {
-    mutate((current) => withUpdatedNode(current, node.id, () => node))
-  }, [mutate])
+    mutate((current) => withUpdatedNode(current, node.id, () => node, actor))
+  }, [actor, mutate])
 
   const updateEdge = useCallback((edge: TheoryEdge) => {
-    mutate((current) => withUpdatedEdge(current, edge.id, () => edge))
-  }, [mutate])
+    mutate((current) => withUpdatedEdge(current, edge.id, () => edge, actor))
+  }, [actor, mutate])
 
   const forge = useCallback((payload: ForgePayload) => {
     if (forgeNodes.length < 2 || !view) return
     const title = payload.emergence.length > 72 ? `${payload.emergence.slice(0, 69)}…` : payload.emergence
-    const synthesis = createNode(title, 'synthesis', forgeNodes.map((node) => node.id))
+    const synthesis = createNode(title, 'synthesis', forgeNodes.map((node) => node.id), actor)
     synthesis.essence = payload.emergence
     synthesis.bodyMarkdown = [
       '## Shared invariant', payload.invariant || '_Not yet articulated._',
@@ -226,17 +228,17 @@ export default function App() {
       if (view.id !== 'whole-theory') {
         next = touchDocument({ ...next, views: next.views.map((item) => item.id === 'whole-theory' ? { ...item, includedNodeIds: [...item.includedNodeIds, synthesis.id], positions: { ...item.positions, [synthesis.id]: { ...position, updatedAt: now() } } } : item) })
       }
-      for (const source of forgeNodes) next = addEdge(next, createEdge(source.id, synthesis.id, 'synthesises into', 'integration'))
+      for (const source of forgeNodes) next = addEdge(next, createEdge(source.id, synthesis.id, 'synthesises into', 'integration', actor))
       return next
     })
     setSelectedNodeId(synthesis.id)
     setSelectedIds([synthesis.id])
     setModal(null)
-  }, [forgeNodes, mutate, view])
+  }, [actor, forgeNodes, mutate, view])
 
   const realise = useCallback((payload: RealisePayload) => {
     if (!realiseNode || !view) return
-    const practice = createNode(payload.title, 'practice', [realiseNode.id])
+    const practice = createNode(payload.title, 'practice', [realiseNode.id], actor)
     practice.essence = payload.action
     practice.bodyMarkdown = `## Action\n\n${payload.action}\n\n## Expected observation\n\n${payload.expected || '_Not yet specified._'}\n\n## Observed outcome\n\n${payload.observed || '_Awaiting practice._'}`
     practice.facets.portals = Array.from(new Set([...realiseNode.facets.portals, 'world']))
@@ -249,13 +251,13 @@ export default function App() {
       if (view.id !== 'whole-theory') {
         next = touchDocument({ ...next, views: next.views.map((item) => item.id === 'whole-theory' ? { ...item, includedNodeIds: [...item.includedNodeIds, practice.id], positions: { ...item.positions, [practice.id]: { ...position, updatedAt: now() } } } : item) })
       }
-      return addEdge(next, createEdge(realiseNode.id, practice.id, 'realises as', 'integration'))
+      return addEdge(next, createEdge(realiseNode.id, practice.id, 'realises as', 'integration', actor))
     })
     setSelectedNodeId(practice.id)
     setSelectedIds([practice.id])
     setRealiseNodeId(null)
     setModal(null)
-  }, [mutate, realiseNode, view])
+  }, [actor, mutate, realiseNode, view])
 
   const handleConnectSession = useCallback((connected: GithubSession) => {
     saveSession(connected)
@@ -276,6 +278,23 @@ export default function App() {
     })
   }, [])
 
+  const toggleEdgeFamily = useCallback((family: TheoryEdge['family']) => {
+    mutate((current) => touchDocument({
+      ...current,
+      views: current.views.map((item) => {
+        if (item.id !== viewId) return item
+        const active = item.visibleEdgeFamilies.includes(family)
+        if (active && item.visibleEdgeFamilies.length === 1) return item
+        return {
+          ...item,
+          visibleEdgeFamilies: active
+            ? item.visibleEdgeFamilies.filter((candidate) => candidate !== family)
+            : [...item.visibleEdgeFamilies, family],
+        }
+      }),
+    }))
+  }, [mutate, viewId])
+
   const exportDocument = useCallback(() => {
     if (!document) return
     const blob = new Blob([`${JSON.stringify(document, null, 2)}\n`], { type: 'application/json' })
@@ -293,15 +312,20 @@ export default function App() {
     input.onchange = () => {
       const file = input.files?.[0]
       if (!file) return
-      void file.text().then((text) => {
+      void file.text().then(async (text) => {
         const value: unknown = JSON.parse(text)
         if (!validateDocument(value)) throw new Error('This file is not a Dream Unity theory document.')
+        const approved = window.confirm(
+          `Import “${value.meta.title}” (revision ${value.meta.revision}) with ${value.nodes.length} concepts and ${value.edges.length} relationships?\n\nYour current atlas will be kept as a recovery backup.`,
+        )
+        if (!approved) return
+        if (document) await saveLocalBackup(document, `Before importing ${file.name}`, session)
         mutate(() => touchDocument(value))
         setViewId(value.views[0]?.id ?? 'whole-theory')
       }).catch((error: unknown) => alert(error instanceof Error ? error.message : 'Import failed'))
     }
     input.click()
-  }, [mutate])
+  }, [document, mutate, session])
 
   const closeWelcome = useCallback(() => {
     localStorage.setItem(WELCOME_KEY, 'seen')
@@ -328,7 +352,7 @@ export default function App() {
   }, [modal, openSeed, redo, selectNode, selectedIds.length, selectedNodeId, undo])
 
   const commands = useMemo(() => [
-    { id: 'new-seed', label: 'Capture new seed', description: 'Place an uncommitted idea in Ether', icon: <Sparkles size={16} />, action: () => openSeed(), keywords: 'new add create' },
+    { id: 'new-seed', label: 'Capture new seed', description: 'Place an uncommitted idea in the Inbox', icon: <Sparkles size={16} />, action: () => openSeed(), keywords: 'new add create' },
     { id: 'forge', label: 'Open Unity Forge', description: selectedIds.length >= 2 ? `Synthesize ${selectedIds.length} selected forms` : 'Select two or more concepts first', icon: <GitMerge size={16} />, action: () => { if (selectedIds.length >= 2) setModal('forge') }, keywords: 'synthesis compress' },
     { id: 'github', label: 'Repository connection', description: session ? `Connected as @${session.login}` : 'Enable automatic GitHub checkpoints', icon: <Github size={16} />, action: () => setModal('github'), keywords: 'save sync' },
     { id: 'undo', label: 'Undo recent change', description: 'Restore the prior local theory state', icon: <RotateCcw size={16} />, action: undo },
@@ -349,8 +373,16 @@ export default function App() {
         syncState={syncState}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
-        onToggleLeft={() => setLeftOpen((value) => !value)}
-        onToggleRight={() => setRightOpen((value) => !value)}
+        onToggleLeft={() => setLeftOpen((value) => {
+          const next = !value
+          if (next && window.matchMedia('(max-width: 979px)').matches) setRightOpen(false)
+          return next
+        })}
+        onToggleRight={() => setRightOpen((value) => {
+          const next = !value
+          if (next && window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false)
+          return next
+        })}
         onSetFocusDepth={setFocusDepth}
         onCommand={() => setModal('commands')}
         onConnect={() => setModal('github')}
@@ -358,9 +390,14 @@ export default function App() {
         onForge={() => setModal('forge')}
         onExport={exportDocument}
         onImport={importDocument}
+        onRequestPanel={(panel) => {
+          setLeftOpen(panel === 'left')
+          setRightOpen(panel === 'right')
+        }}
+        onHome={() => selectNode(view.rootNodeId ?? 'unity-core')}
       />
       <main className="workspace">
-        {leftOpen && <OutlinePanel document={document} currentView={view} selectedNodeId={selectedNodeId} onSelectNode={selectNode} onSelectView={(id) => { setViewId(id); setSelectedNodeId(null); setSelectedEdgeId(null) }} visiblePortals={visiblePortals} onTogglePortal={togglePortal} onNewSeed={() => openSeed()} />}
+        {leftOpen && <OutlinePanel document={document} currentView={view} selectedNodeId={selectedNodeId} onSelectNode={selectNode} onSelectView={(id) => { setViewId(id); setSelectedNodeId(null); setSelectedEdgeId(null); if (window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false) }} visiblePortals={visiblePortals} onTogglePortal={togglePortal} onNewSeed={() => openSeed()} visibleEdgeFamilies={new Set(view.visibleEdgeFamilies)} onToggleEdgeFamily={toggleEdgeFamily} onStartRelation={(id) => { selectNode(id); setInspectorTab('relations'); setRightOpen(true) }} onRequestClose={() => { if (window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false) }} />}
         <TheoryCanvas
           document={document}
           view={view}
@@ -371,11 +408,11 @@ export default function App() {
           onSelectNode={selectNode}
           onSelectEdge={selectEdge}
           onSelectionChange={(ids) => setSelectedIds(ids)}
-          onMoveNode={(id, position) => mutate((current) => updateNodePosition(current, view.id, id, position), false)}
+          onMoveNode={(id, position) => mutate((current) => updateNodePosition(current, view.id, id, position))}
           onCreateAt={openSeed}
           onConnect={connect}
         />
-        {rightOpen && <Inspector document={document} node={selectedNode} edge={selectedEdge} requestedTab={inspectorTab} onChangeNode={updateNode} onChangeEdge={updateEdge} onSelectNode={selectNode} onClose={() => setRightOpen(false)} onArchive={(id) => mutate((current) => archiveNode(current, id))} onRealise={(id) => { setRealiseNodeId(id); setModal('realise') }} />}
+        {rightOpen && <Inspector document={document} node={selectedNode} edge={selectedEdge} requestedTab={inspectorTab} onChangeNode={updateNode} onChangeEdge={updateEdge} onSelectNode={selectNode} onClose={() => setRightOpen(false)} onArchive={(id) => mutate((current) => archiveNode(current, id, actor))} onRealise={(id) => { setRealiseNodeId(id); setModal('realise') }} onBeginRelation={(from, to) => setPendingConnection({ from, to })} />}
       </main>
 
       {modal === 'welcome' && <WelcomeDialog onClose={closeWelcome} />}
@@ -385,7 +422,7 @@ export default function App() {
       {modal === 'realise' && realiseNode && <RealiseDialog node={realiseNode} onClose={() => { setModal(null); setRealiseNodeId(null) }} onCreate={realise} />}
       {modal === 'commands' && <CommandPalette document={document} onClose={() => setModal(null)} onSelectNode={selectNode} commands={commands} />}
       {pendingConnection && relationSource && relationTarget && <RelationDialog source={relationSource} target={relationTarget} onClose={() => setPendingConnection(null)} onCreate={createRelation} />}
-      {conflict && <ConflictDialog local={document} remote={conflict.remote} onClose={() => setModal(null)} onResolve={(choice) => void resolveConflict(choice)} />}
+      {conflict && <ConflictDialog local={document} remote={conflict.remote} conflictingPaths={conflict.conflictingPaths} onClose={() => undefined} onResolve={(choice) => void resolveConflict(choice)} />}
     </div>
   )
 }
