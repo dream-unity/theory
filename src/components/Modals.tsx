@@ -102,27 +102,61 @@ function Modal({
 
 const titleCase = (value: string) => value.replace(/-/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 
-export function NewSeedDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (title: string, type: TheoryNodeType) => void }) {
+const quickLinkPresets: Array<{ label: string; family: TheoryEdge['family'] }> = [
+  { label: 'inspires', family: 'provenance' },
+  { label: 'supports', family: 'reasoning' },
+  { label: 'extends into', family: 'structure' },
+  { label: 'contrasts with', family: 'correspondence' },
+  { label: 'realises as', family: 'integration' },
+]
+
+export function NewSeedDialog({
+  selectedNode,
+  onClose,
+  onCreate,
+}: {
+  selectedNode: TheoryNode | null
+  onClose: () => void
+  onCreate: (title: string, type: TheoryNodeType, link?: { relation: string; family: TheoryEdge['family'] }) => void
+}) {
   const [title, setTitle] = useState('')
   const [type, setType] = useState<TheoryNodeType>('concept')
+  const [connectToSelected, setConnectToSelected] = useState(Boolean(selectedNode))
+  const [relation, setRelation] = useState('inspires')
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (!title.trim()) return
-    onCreate(title.trim(), type)
+    const preset = quickLinkPresets.find((item) => item.label === relation) ?? quickLinkPresets[0]
+    onCreate(title.trim(), type, selectedNode && connectToSelected ? { relation: preset.label, family: preset.family } : undefined)
   }
   return (
-    <Modal title="Capture a new seed" eyebrow="Theory inbox" onClose={onClose}>
+    <Modal title="Add a new idea" eyebrow={selectedNode ? `Near ${selectedNode.title}` : 'Theory inbox'} onClose={onClose}>
       <form onSubmit={submit} className="modal-body form-stack">
-        <p className="modal-lead">Capture first. Classification can mature later.</p>
-        <label className="field-label">Seed title
+        <p className="modal-lead">Capture the thought first. You can deepen its classification later.</p>
+        <label className="field-label">Idea
           <input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What idea just appeared?" />
         </label>
-        <label className="field-label">Starting kind
+        <label className="field-label">Kind
           <select value={type} onChange={(event) => setType(event.target.value as TheoryNodeType)}>
             {NODE_TYPES.map((value) => <option value={value} key={value}>{titleCase(value)}</option>)}
           </select>
         </label>
-        <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button"><Sparkles size={15} /> Place seed</button></div>
+        {selectedNode && (
+          <div className="quick-link-field">
+            <label className="check-row">
+              <input type="checkbox" checked={connectToSelected} onChange={(event) => setConnectToSelected(event.target.checked)} />
+              <span>Connect this idea to <strong>{selectedNode.title}</strong></span>
+            </label>
+            {connectToSelected && (
+              <label className="field-label">Quick relationship
+                <select value={relation} onChange={(event) => setRelation(event.target.value)}>
+                  {quickLinkPresets.map((item) => <option key={item.label} value={item.label}>{selectedNode.title} → {item.label} → this idea</option>)}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
+        <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button"><Sparkles size={17} /> Add idea</button></div>
       </form>
     </Modal>
   )

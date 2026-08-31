@@ -16,19 +16,20 @@ import {
 } from 'lucide-react'
 import type { Portal, TheoryNode } from '../types'
 
+export type ConceptDetailTier = 'overview' | 'compact' | 'detail' | 'dossier'
+
 export type ConceptFlowNode = Node<{
   concept: TheoryNode
-  zoom: number
-  overview: boolean
+  detailTier: ConceptDetailTier
   dimmed: boolean
   relationCount: number
 }, 'concept'>
 
 const portalColors: Record<Portal, string> = {
-  maker: '#6ed8ea',
-  machine: '#d9b86d',
-  world: '#7ecb99',
-  unity: '#aaa0ee',
+  maker: 'var(--maker)',
+  machine: 'var(--machine)',
+  world: 'var(--world)',
+  unity: 'var(--unity)',
 }
 
 const portalLabels: Record<Portal, string> = {
@@ -64,15 +65,15 @@ const maturityIndex = {
 }
 
 function ConceptNodeComponent({ data, selected }: NodeProps<ConceptFlowNode>) {
-  const { concept, zoom, overview, dimmed, relationCount } = data
+  const { concept, detailTier, dimmed, relationCount } = data
   const Icon = concept.id === 'unity-core' ? Gem : icons[concept.type]
   const portals = concept.facets.portals
   const portal = portals[0] ?? 'ether'
-  const detail = zoom >= 0.72
-  const dossier = zoom >= 1.12
+  const overview = detailTier === 'overview'
+  const detail = detailTier === 'detail' || detailTier === 'dossier'
+  const dossier = detailTier === 'dossier'
   const progress = Math.round((maturityIndex[concept.epistemics.maturity] / 7) * 360)
   const phase = concept.facets.phases[0] ?? 'unplaced'
-  const overviewScale = Math.min(2.4, 1 / Math.max(zoom, 0.24))
   const portalSummary = portals.length > 0 ? portals.map((item) => portalLabels[item]).join(' · ') : 'Unplaced'
   const portalGradient = portals.length > 1
     ? `linear-gradient(90deg, ${portals.map((item, index) => `${portalColors[item]} ${index * 100 / portals.length}% ${(index + 1) * 100 / portals.length}%`).join(', ')})`
@@ -80,10 +81,10 @@ function ConceptNodeComponent({ data, selected }: NodeProps<ConceptFlowNode>) {
   const nodeStyle = {
     '--maturity-angle': `${progress}deg`,
     ...(overview ? {
-      width: `${144 * overviewScale}px`,
-      minHeight: `${50 * overviewScale}px`,
-      padding: `${9 * overviewScale}px ${11 * overviewScale}px`,
-      borderRadius: `${10 * overviewScale}px`,
+      width: '312px',
+      minHeight: '108px',
+      padding: '20px 24px',
+      borderRadius: '22px',
     } : {}),
   } as React.CSSProperties
 
@@ -97,20 +98,20 @@ function ConceptNodeComponent({ data, selected }: NodeProps<ConceptFlowNode>) {
       <Handle type="target" position={Position.Top} className="concept-handle" aria-label={`Connect into ${concept.title}`} />
       <span
         aria-hidden="true"
-        style={{ position: 'absolute', top: 0, left: '12%', right: '12%', height: overview ? 2.5 * overviewScale : 2, borderRadius: '0 0 999px 999px', background: portalGradient }}
+        style={{ position: 'absolute', top: 0, left: '12%', right: '12%', height: overview ? 5 : 2, borderRadius: '0 0 999px 999px', background: portalGradient }}
       />
       {overview ? (
         <>
-          <header className="node-heading" style={{ gap: 6 * overviewScale }}>
-            <span className="node-icon" aria-hidden="true" style={{ width: 20 * overviewScale, height: 20 * overviewScale, borderRadius: 5 * overviewScale }}>
-              <Icon size={13 * overviewScale} strokeWidth={1.8} />
+          <header className="node-heading" style={{ gap: 13 }}>
+            <span className="node-icon" aria-hidden="true" style={{ width: 43, height: 43, borderRadius: 11 }}>
+              <Icon size={28} strokeWidth={1.8} />
             </span>
-            <span className="node-kind" style={{ fontSize: 7 * overviewScale }}>{concept.type}</span>
+            <span className="node-kind" style={{ fontSize: 15 }}>{concept.type}</span>
           </header>
-          <h3 style={{ marginTop: 6 * overviewScale, fontSize: 13 * overviewScale }}>{concept.title}</h3>
+          <h3 style={{ marginTop: 13, fontSize: 28 }}>{concept.title}</h3>
           <span
             title={`Portals: ${portalSummary}`}
-            style={{ display: 'block', marginTop: 5 * overviewScale, color: '#8f96a7', fontSize: 6.5 * overviewScale, letterSpacing: '.08em', textTransform: 'uppercase' }}
+            style={{ display: 'block', marginTop: 11, color: 'var(--muted)', fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase' }}
           >
             {portalSummary}
           </span>
@@ -128,7 +129,7 @@ function ConceptNodeComponent({ data, selected }: NodeProps<ConceptFlowNode>) {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 'auto' }}
               >
                 {portals.map((item) => (
-                  <span key={item} aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: portalColors[item], boxShadow: '0 0 0 1px rgba(255,255,255,.15)' }} />
+                  <span key={item} aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: portalColors[item], boxShadow: '0 0 0 1px rgba(23,32,51,.14)' }} />
                 ))}
               </span>
             ) : null}
@@ -150,4 +151,12 @@ function ConceptNodeComponent({ data, selected }: NodeProps<ConceptFlowNode>) {
   )
 }
 
-export const ConceptNode = memo(ConceptNodeComponent)
+function conceptNodePropsEqual(previous: NodeProps<ConceptFlowNode>, next: NodeProps<ConceptFlowNode>) {
+  return previous.selected === next.selected &&
+    previous.data.concept === next.data.concept &&
+    previous.data.detailTier === next.data.detailTier &&
+    previous.data.dimmed === next.data.dimmed &&
+    previous.data.relationCount === next.data.relationCount
+}
+
+export const ConceptNode = memo(ConceptNodeComponent, conceptNodePropsEqual)

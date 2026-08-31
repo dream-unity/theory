@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SEED_DOCUMENT } from '../seed'
 import type { TheoryDocument, TheoryNode, TheoryView } from '../types'
-import { createEdge, createNode, mergeDocuments, slugify, validateDocument } from './theory'
+import { createEdge, createNode, deleteEdge, mergeDocuments, slugify, validateDocument } from './theory'
 
 const TIMESTAMP = '2026-01-01T00:00:00.000Z'
 
@@ -51,6 +51,17 @@ describe('theory document helpers', () => {
     expect(slugify(' Ghost in the Mirror! ')).toBe('ghost-in-the-mirror')
     expect(createNode('Primality').type).toBe('concept')
     expect(createEdge('a', 'b', 'enables').relation).toBe('enables')
+  })
+
+  it('removes a relationship reversibly with a tombstone', () => {
+    const source = createNode('Source')
+    const target = createNode('Target')
+    const edge = createEdge(source.id, target.id, 'supports', 'reasoning')
+    const before = { ...document(TIMESTAMP), nodes: [source, target], edges: [edge] }
+    const after = deleteEdge(before, edge.id)
+    expect(after.edges).toHaveLength(0)
+    expect(after.tombstones).toContainEqual(expect.objectContaining({ id: edge.id, entity: 'edge' }))
+    expect(validateDocument(after)).toBe(true)
   })
 
   it('keeps the newest node during a merge', () => {

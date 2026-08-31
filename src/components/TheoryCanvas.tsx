@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Background,
   BackgroundVariant,
   Controls,
-  MiniMap,
   ReactFlow,
-  useEdgesState,
   useNodesState,
   type Connection,
   type Edge,
@@ -15,11 +13,17 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { Portal, TheoryDocument, TheoryEdge, TheoryNode, TheoryView } from '../types'
-import { ConceptNode, type ConceptFlowNode } from './ConceptNode'
+import { ConceptNode, type ConceptDetailTier, type ConceptFlowNode } from './ConceptNode'
 
 const nodeTypes = { concept: ConceptNode }
 
-const OVERVIEW_ZOOM = 0.5
+const DEFAULT_ZOOM = 0.62
+const OVERVIEW_ENTER_ZOOM = 0.46
+const OVERVIEW_EXIT_ZOOM = 0.58
+const DETAIL_ENTER_ZOOM = 0.76
+const DETAIL_EXIT_ZOOM = 0.66
+const DOSSIER_ENTER_ZOOM = 1.16
+const DOSSIER_EXIT_ZOOM = 1.04
 const OVERVIEW_NODE_LIMIT = 12
 const PORTAL_ORDER: Array<Portal | 'ether'> = ['unity', 'maker', 'machine', 'world', 'ether']
 
@@ -42,25 +46,82 @@ const typeWeight: Partial<Record<TheoryNode['type'], number>> = {
 }
 
 const edgeColors: Record<TheoryEdge['family'], string> = {
-  structure: '#6887a8',
-  dynamics: '#71d8e7',
-  reasoning: '#d9b86d',
-  correspondence: '#a28ce0',
-  integration: '#e8dcac',
-  provenance: '#82939e',
+  structure: '#08798a',
+  dynamics: '#0e7490',
+  reasoning: '#8a5a00',
+  correspondence: '#6250a8',
+  integration: '#1e7a45',
+  provenance: '#64748b',
 }
 
-const portalColors: Record<Portal, string> = {
-  maker: '#6ed8ea',
-  machine: '#d9b86d',
-  world: '#7ecb99',
-  unity: '#aaa0ee',
+function preferredTransitionDuration() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 160
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0
+  return window.matchMedia('(pointer: coarse)').matches ? 80 : 160
 }
 
-function reducedMotionIsPreferred() {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    : false
+function detailTierForZoom(
+  current: ConceptDetailTier,
+  zoom: number,
+  isLargeView: boolean,
+): ConceptDetailTier {
+  if (isLargeView && current !== 'overview' && zoom <= OVERVIEW_ENTER_ZOOM) return 'overview'
+  if (current === 'overview') {
+    if (isLargeView && zoom < OVERVIEW_EXIT_ZOOM) return 'overview'
+    current = 'compact'
+  }
+
+  if (current === 'dossier') {
+    if (zoom >= DOSSIER_EXIT_ZOOM) return 'dossier'
+    current = 'detail'
+  } else if (zoom >= DOSSIER_ENTER_ZOOM) {
+    return 'dossier'
+  }
+
+  if (current === 'detail') return zoom >= DETAIL_EXIT_ZOOM ? 'detail' : 'compact'
+  return zoom >= DETAIL_ENTER_ZOOM ? 'detail' : 'compact'
+}
+
+function sameNodeData(left: ConceptFlowNode['data'], right: ConceptFlowNode['data']) {
+  return left.concept === right.concept &&
+    left.detailTier === right.detailTier &&
+    left.dimmed === right.dimmed &&
+    left.relationCount === right.relationCount
+}
+
+function reconcileNodes(current: ConceptFlowNode[], next: ConceptFlowNode[]) {
+  const currentById = new Map(current.map((node) => [node.id, node]))
+  let changed = current.length !== next.length
+  const reconciled = next.map((candidate) => {
+    const existing = currentById.get(candidate.id)
+    if (!existing) {
+      changed = true
+      return candidate
+    }
+
+    const data = sameNodeData(existing.data, candidate.data) ? existing.data : candidate.data
+    const position = existing.dragging ? existing.position : candidate.position
+    const unchanged = existing.type === candidate.type &&
+      existing.selected === candidate.selected &&
+      existing.zIndex === candidate.zIndex &&
+      existing.ariaLabel === candidate.ariaLabel &&
+      existing.position.x === position.x &&
+      existing.position.y === position.y &&
+      existing.data === data
+
+    if (unchanged) return existing
+    changed = true
+    return {
+      ...existing,
+      ...candidate,
+      data,
+      position,
+      dragging: existing.dragging,
+      measured: existing.measured,
+    }
+  })
+
+  return changed ? reconciled : current
 }
 
 interface TheoryCanvasProps {
@@ -70,6 +131,7 @@ interface TheoryCanvasProps {
   selectedEdgeId: string | null
   focusDepth: 0 | 1 | 2
   visiblePortals: Set<string>
+  visibleEdgeFamilies: Set<TheoryEdge['family']>
   onSelectNode: (id: string | null) => void
   onSelectEdge: (id: string | null) => void
   onSelectionChange: (ids: string[]) => void
@@ -85,6 +147,7 @@ export function TheoryCanvas({
   selectedEdgeId,
   focusDepth,
   visiblePortals,
+  visibleEdgeFamilies,
   onSelectNode,
   onSelectEdge,
   onSelectionChange,
@@ -92,9 +155,9 @@ export function TheoryCanvas({
   onCreateAt,
   onConnect,
 }: TheoryCanvasProps) {
-  const [zoom, setZoom] = useState(0.62)
+  const [detailTier, setDetailTier] = useState<ConceptDetailTier>('compact')
   const [instance, setInstance] = useState<ReactFlowInstance<ConceptFlowNode, Edge> | null>(null)
-  const [transitionDuration] = useState(() => reducedMotionIsPreferred() ? 0 : 520)
+  const [transitionDuration] = useState(preferredTransitionDuration)
 
   const neighborhood = useMemo(() => {
     if (!selectedNodeId || focusDepth === 0) return null
@@ -121,8 +184,9 @@ export function TheoryCanvas({
     return counts
   }, [document.edges])
 
-  const nodeTitles = useMemo(() => new Map(document.nodes.map((node) => [node.id, node.title])), [document.nodes])
-  const conceptsById = useMemo(() => new Map(document.nodes.map((node) => [node.id, node])), [document.nodes])
+  const nodeTitleSignature = document.nodes.map((node) => `${node.id}\u0000${node.title}`).join('\u0001')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the signature captures exactly the fields the map contains
+  const nodeTitles = useMemo(() => new Map(document.nodes.map((node) => [node.id, node.title])), [nodeTitleSignature])
 
   const visibleConcepts = useMemo(() => {
     const included = new Set(view.includedNodeIds)
@@ -134,7 +198,8 @@ export function TheoryCanvas({
 
   const visibleConceptIds = useMemo(() => new Set(visibleConcepts.map((concept) => concept.id)), [visibleConcepts])
   const isLargeView = visibleConcepts.length > OVERVIEW_NODE_LIMIT
-  const isOverview = zoom < OVERVIEW_ZOOM && isLargeView
+  const isOverview = detailTier === 'overview' && isLargeView
+  const effectiveDetailTier: ConceptDetailTier = isOverview ? 'overview' : detailTier === 'overview' ? 'compact' : detailTier
 
   const overviewNodeIds = useMemo(() => {
     if (!isOverview) return visibleConceptIds
@@ -142,7 +207,7 @@ export function TheoryCanvas({
     const activeEdges = document.edges.filter((edge) =>
       visibleConceptIds.has(edge.from) &&
       visibleConceptIds.has(edge.to) &&
-      view.visibleEdgeFamilies.includes(edge.family),
+      visibleEdgeFamilies.has(edge.family),
     )
     const activeDegree = new Map<string, number>()
     for (const edge of activeEdges) {
@@ -187,7 +252,7 @@ export function TheoryCanvas({
 
     for (const concept of ranked) retain(concept.id)
     return retained
-  }, [document.edges, isOverview, selectedNodeId, view.rootNodeId, view.visibleEdgeFamilies, visibleConceptIds, visibleConcepts])
+  }, [document.edges, isOverview, selectedNodeId, view.rootNodeId, visibleConceptIds, visibleConcepts, visibleEdgeFamilies])
 
   const derivedNodes = useMemo<ConceptFlowNode[]>(() => {
     return visibleConcepts
@@ -199,62 +264,63 @@ export function TheoryCanvas({
         selected: concept.id === selectedNodeId,
         data: {
           concept,
-          zoom,
-          overview: isOverview,
+          detailTier: effectiveDetailTier,
           dimmed: !!neighborhood && !neighborhood.has(concept.id),
           relationCount: relationCounts.get(concept.id) ?? 0,
         },
         zIndex: concept.id === selectedNodeId ? 20 : concept.id === 'unity-core' ? 10 : 1,
         ariaLabel: `${concept.title}, ${concept.type}`,
       }))
-  }, [isOverview, neighborhood, overviewNodeIds, relationCounts, selectedNodeId, view.positions, visibleConcepts, zoom])
+  }, [effectiveDetailTier, neighborhood, overviewNodeIds, relationCounts, selectedNodeId, view.positions, visibleConcepts])
 
-  const nodeIds = useMemo(() => new Set(derivedNodes.map((node) => node.id)), [derivedNodes])
+  const nodeIdSignature = derivedNodes.map((node) => node.id).join('\u0000')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- IDs are the complete input to this membership set
+  const nodeIds = useMemo(() => new Set(derivedNodes.map((node) => node.id)), [nodeIdSignature])
   const derivedEdges = useMemo<Edge[]>(() =>
     document.edges
       .filter((edge) => nodeIds.has(edge.from) && nodeIds.has(edge.to))
-      .filter((edge) => view.visibleEdgeFamilies.includes(edge.family))
+      .filter((edge) => visibleEdgeFamilies.has(edge.family))
       .map((edge) => {
         const connected = edge.from === selectedNodeId || edge.to === selectedNodeId
         const dimmed = !!neighborhood && (!neighborhood.has(edge.from) || !neighborhood.has(edge.to))
         const superseded = edge.status === 'superseded'
-        const baseOpacity = dimmed ? 0.06 : connected ? 0.95 : zoom < OVERVIEW_ZOOM ? 0.22 : 0.38
+        const baseOpacity = dimmed ? 0.08 : connected ? 0.95 : isOverview ? 0.26 : 0.46
+        const showLabel = effectiveDetailTier === 'detail' || effectiveDetailTier === 'dossier' || connected
         return {
           id: edge.id,
           source: edge.from,
           target: edge.to,
-          label: zoom >= 0.74 || connected ? `${edge.relation}${superseded ? ' · superseded' : ''}` : undefined,
-          type: 'smoothstep',
+          label: showLabel ? `${edge.relation}${superseded ? ' · superseded' : ''}` : undefined,
+          type: isOverview ? 'straight' : 'default',
           selected: edge.id === selectedEdgeId,
-          animated: connected && !superseded && transitionDuration > 0,
+          animated: false,
           style: {
-            stroke: superseded ? '#555c6b' : edgeColors[edge.family],
+            stroke: superseded ? '#64748b' : edgeColors[edge.family],
             strokeWidth: superseded ? edge.id === selectedEdgeId ? 1.8 : 1 : edge.id === selectedEdgeId ? 2.8 : connected ? 2.1 : 1.2,
             opacity: superseded ? edge.id === selectedEdgeId ? 0.5 : connected ? 0.24 : 0.07 : baseOpacity,
             strokeDasharray: superseded ? '2 8' : edge.status === 'contested' ? '6 5' : undefined,
           },
-          labelStyle: { fill: superseded ? '#777d8c' : '#ddd8c9', fontSize: 11, fontWeight: 600 },
-          labelBgStyle: { fill: '#111522', fillOpacity: 0.94 },
-          labelBgPadding: [6, 3] as [number, number],
+          labelStyle: { fill: superseded ? '#64748b' : '#172033', fontSize: 11, fontWeight: 650 },
+          labelBgStyle: { fill: '#ffffff', fillOpacity: 0.96 },
+          labelBgPadding: [5, 3] as [number, number],
           labelBgBorderRadius: 5,
-          markerEnd: { type: 'arrowclosed' as const, color: superseded ? '#555c6b' : edgeColors[edge.family], width: 15, height: 15 },
+          markerEnd: { type: 'arrowclosed' as const, color: superseded ? '#64748b' : edgeColors[edge.family], width: isOverview ? 12 : 14, height: isOverview ? 12 : 14 },
           ariaLabel: `${nodeTitles.get(edge.from) ?? edge.from} ${edge.relation} ${nodeTitles.get(edge.to) ?? edge.to}, ${edge.status} relation`,
         }
       }),
-  [document.edges, neighborhood, nodeIds, nodeTitles, selectedEdgeId, selectedNodeId, transitionDuration, view.visibleEdgeFamilies, zoom])
+  [document.edges, effectiveDetailTier, isOverview, neighborhood, nodeIds, nodeTitles, selectedEdgeId, selectedNodeId, visibleEdgeFamilies])
 
   const [nodes, setNodes, onNodesChange] = useNodesState<ConceptFlowNode>(derivedNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(derivedEdges)
 
-  useEffect(() => setNodes(derivedNodes), [derivedNodes, setNodes])
-  useEffect(() => setEdges(derivedEdges), [derivedEdges, setEdges])
+  useEffect(() => setNodes((current) => reconcileNodes(current, derivedNodes)), [derivedNodes, setNodes])
 
   useEffect(() => {
     if (!instance) return
+    setDetailTier(isLargeView ? 'overview' : 'compact')
     const frame = window.requestAnimationFrame(() => {
       void instance.fitView({
         padding: 0.22,
-        maxZoom: isLargeView ? OVERVIEW_ZOOM - 0.04 : 0.82,
+        maxZoom: isLargeView ? OVERVIEW_ENTER_ZOOM : 0.82,
         duration: transitionDuration,
       })
     })
@@ -266,8 +332,8 @@ export function TheoryCanvas({
     const frame = window.requestAnimationFrame(() => {
       const selected = instance.getNode(selectedNodeId)
       const position = view.positions[selectedNodeId]
-      const targetZoom = Math.max(instance.getZoom(), 0.78)
-      const expandsFromOverview = instance.getZoom() < OVERVIEW_ZOOM && targetZoom >= OVERVIEW_ZOOM
+      const targetZoom = Math.max(instance.getZoom(), 0.82)
+      const expandsFromOverview = instance.getZoom() <= OVERVIEW_EXIT_ZOOM && targetZoom >= OVERVIEW_EXIT_ZOOM
       const normalWidth = selectedNodeId === 'unity-core' ? 275 : 245
       const normalHeight = selectedNodeId === 'unity-core' ? 104 : 96
       const width = expandsFromOverview ? normalWidth : selected?.measured?.width ?? selected?.width ?? normalWidth
@@ -280,29 +346,32 @@ export function TheoryCanvas({
     return () => window.cancelAnimationFrame(frame)
   }, [instance, selectedNodeId, transitionDuration, view.id])
 
-  const handleNodeClick: NodeMouseHandler<ConceptFlowNode> = (_event, node) => {
+  const handleNodeClick = useCallback<NodeMouseHandler<ConceptFlowNode>>((_event, node) => {
     onSelectEdge(null)
     onSelectNode(node.id)
-  }
+  }, [onSelectEdge, onSelectNode])
 
-  const handlePaneDoubleClick = (event: React.MouseEvent) => {
+  const handlePaneDoubleClick = useCallback((event: React.MouseEvent) => {
     if (!instance) return
     if (event.target instanceof Element && event.target.closest('.react-flow__node, .react-flow__edge, button')) return
     onCreateAt(instance.screenToFlowPosition({ x: event.clientX, y: event.clientY }))
-  }
+  }, [instance, onCreateAt])
 
-  const handleSelection = ({ nodes: selection }: OnSelectionChangeParams) => {
+  const handleSelection = useCallback(({ nodes: selection }: OnSelectionChangeParams) => {
     onSelectionChange(selection.map((node) => node.id))
-  }
+  }, [onSelectionChange])
+
+  const handleMoveEnd = useCallback((_event: MouseEvent | TouchEvent | null, viewport: { zoom: number }) => {
+    setDetailTier((current) => detailTierForZoom(current, viewport.zoom, isLargeView))
+  }, [isLargeView])
 
   return (
     <div className="canvas-shell" aria-label="Dream Unity theory canvas">
       <ReactFlow<ConceptFlowNode>
         nodes={nodes}
-        edges={edges}
+        edges={derivedEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
         onEdgeClick={(_event, edge) => { onSelectNode(null); onSelectEdge(edge.id) }}
         onPaneClick={() => { onSelectNode(null); onSelectEdge(null) }}
@@ -311,13 +380,10 @@ export function TheoryCanvas({
         onConnect={onConnect}
         onSelectionChange={handleSelection}
         onInit={setInstance}
-        onMove={(_event, viewport) => {
-          const quantized = Math.round(viewport.zoom * 20) / 20
-          setZoom((current) => current === quantized ? current : quantized)
-        }}
+        onMoveEnd={handleMoveEnd}
         minZoom={0.18}
         maxZoom={1.8}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.62 }}
+        defaultViewport={{ x: 0, y: 0, zoom: DEFAULT_ZOOM }}
         selectionOnDrag
         panOnScroll
         zoomOnPinch
@@ -326,29 +392,18 @@ export function TheoryCanvas({
         multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
         nodesFocusable
         edgesFocusable
+        onlyRenderVisibleElements
         proOptions={{ hideAttribution: false }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={28} size={1} color="rgba(222, 224, 239, .11)" />
+        <Background variant={BackgroundVariant.Dots} gap={28} size={1} color="rgba(71, 85, 105, .18)" />
         <Controls position="bottom-left" showInteractive={false} />
-        <MiniMap
-          className="theory-minimap"
-          ariaLabel="Overview of the current theory landscape"
-          pannable
-          zoomable
-          nodeStrokeWidth={2}
-          nodeColor={(mapNode) => {
-            const portals = conceptsById.get(mapNode.id)?.facets.portals ?? []
-            if (portals.length > 1) return '#e7e3da'
-            return portals[0] ? portalColors[portals[0]] : '#82939e'
-          }}
-          nodeStrokeColor={(mapNode) => {
-            const portals = conceptsById.get(mapNode.id)?.facets.portals ?? []
-            return portals.length > 1 ? '#ffffff' : 'transparent'
-          }}
-          maskColor="rgba(6, 8, 16, .78)"
-        />
       </ReactFlow>
-      <div className="canvas-hint" aria-hidden="true">Double-click empty space to capture a seed</div>
+      {isOverview && (
+        <div className="overview-count-badge" role="status" aria-live="polite">
+          {derivedNodes.length} of {visibleConcepts.length} ideas · zoom in for all
+        </div>
+      )}
+      <div className="canvas-hint" aria-hidden="true">Double-click empty space to add an idea</div>
     </div>
   )
 }

@@ -19,13 +19,14 @@ import { OutlinePanel } from './components/OutlinePanel'
 import { TheoryCanvas } from './components/TheoryCanvas'
 import { useAutosave } from './hooks/useAutosave'
 import { completeGithubOAuth, connectWithToken, loadRuntimeConfig } from './lib/github'
-import { clearSession, loadSession, resolveInitialDocument, saveLocalBackup, saveSession } from './lib/local-store'
+import { clearSession, loadPublishedDocument, loadSession, resolveInitialDocument, saveLocalBackup, saveSession } from './lib/local-store'
 import {
   addEdge,
   addNodeToView,
   archiveNode,
   createEdge,
   createNode,
+  deleteEdge,
   now,
   touchDocument,
   updateNodePosition,
@@ -38,8 +39,6 @@ import type { GithubSession, Portal, RuntimeConfig, TheoryDocument, TheoryEdge, 
 
 type ModalName = 'seed' | 'github' | 'forge' | 'realise' | 'commands' | 'welcome' | null
 
-const WELCOME_KEY = 'dream-unity:atlas-welcome:v1'
-
 export default function App() {
   const [document, setDocument] = useState<TheoryDocument | null>(null)
   const [config, setConfig] = useState<RuntimeConfig>({ repository: 'dream-unity/theory', branch: 'theory-live', dataPath: 'public/data/theory.json' })
@@ -48,11 +47,12 @@ export default function App() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [focusDepth, setFocusDepth] = useState<0 | 1 | 2>(0)
+  const [focusDepth, setFocusDepth] = useState<0 | 1 | 2>(() => window.matchMedia('(max-width: 700px)').matches ? 1 : 0)
   const [visiblePortals, setVisiblePortals] = useState<Set<string>>(new Set(['maker', 'machine', 'world', 'unity']))
-  const [leftOpen, setLeftOpen] = useState(() => window.matchMedia('(min-width: 980px)').matches)
-  const [rightOpen, setRightOpen] = useState(() => window.matchMedia('(min-width: 980px)').matches)
-  const [modal, setModal] = useState<ModalName>(() => localStorage.getItem(WELCOME_KEY) ? null : 'welcome')
+  const [edgeFamilyOverrides, setEdgeFamilyOverrides] = useState<Record<string, Set<TheoryEdge['family']>>>({})
+  const [leftOpen, setLeftOpen] = useState(false)
+  const [rightOpen, setRightOpen] = useState(false)
+  const [modal, setModal] = useState<ModalName>(null)
   const [inspectorTab, setInspectorTab] = useState<'essence' | 'relations' | 'grounding' | 'mirror'>('essence')
   const [seedPosition, setSeedPosition] = useState<{ x: number; y: number }>({ x: -50, y: -760 })
   const [pendingConnection, setPendingConnection] = useState<{ from: string; to: string } | null>(null)
@@ -61,13 +61,24 @@ export default function App() {
   const undoStack = useRef<TheoryDocument[]>([])
   const redoStack = useRef<TheoryDocument[]>([])
   const lastHistoryAt = useRef(0)
+  const [navigation, setNavigation] = useState<{ ids: string[]; index: number }>({ ids: [], index: -1 })
 
   useEffect(() => {
     let cancelled = false
-    void Promise.all([resolveInitialDocument(SEED_DOCUMENT), loadRuntimeConfig()]).then(async ([initial, runtime]) => {
+    void resolveInitialDocument(SEED_DOCUMENT).then((initial) => {
+      if (cancelled) return
+      setDocument(initial)
+      // Paint immediately from local/bundled data, then hydrate a first-time browser
+      // from the published theory without blocking or replacing an edit already made.
+      if (initial === SEED_DOCUMENT) {
+        void loadPublishedDocument().then((published) => {
+          if (!cancelled && published) setDocument((current) => current === initial ? published : current)
+        })
+      }
+    })
+    void loadRuntimeConfig().then(async (runtime) => {
       if (cancelled) return
       setConfig(runtime)
-      setDocument(initial)
       if (runtime.githubOAuthClientId) {
         try {
           const token = await completeGithubOAuth(runtime.githubOAuthClientId)
@@ -118,6 +129,10 @@ export default function App() {
   const { syncState, conflict, checkpointNow, resolveConflict } = useAutosave(document, setDocument, session)
 
   const view = useMemo(() => document?.views.find((item) => item.id === viewId) ?? document?.views[0], [document, viewId])
+  const visibleEdgeFamilies = useMemo(
+    () => edgeFamilyOverrides[viewId] ?? new Set(view?.visibleEdgeFamilies ?? []),
+    [edgeFamilyOverrides, view?.visibleEdgeFamilies, viewId],
+  )
   const selectedNode = useMemo(() => document?.nodes.find((node) => node.id === selectedNodeId) ?? null, [document, selectedNodeId])
   const selectedEdge = useMemo(() => document?.edges.find((edge) => edge.id === selectedEdgeId) ?? null, [document, selectedEdgeId])
   const forgeNodes = useMemo(() => document?.nodes.filter((node) => selectedIds.includes(node.id)) ?? [], [document, selectedIds])
@@ -125,20 +140,48 @@ export default function App() {
   const relationSource = useMemo(() => document?.nodes.find((node) => node.id === pendingConnection?.from), [document, pendingConnection])
   const relationTarget = useMemo(() => document?.nodes.find((node) => node.id === pendingConnection?.to), [document, pendingConnection])
 
-  const selectNode = useCallback((id: string | null) => {
+  const revealNode = useCallback((id: string | null) => {
     setSelectedNodeId(id)
     setSelectedEdgeId(null)
     if (id) {
       setSelectedIds([id])
       setRightOpen(true)
       if (window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false)
+    } else {
+      setSelectedIds([])
+      setRightOpen(false)
     }
   }, [])
 
+  const selectNode = useCallback((id: string | null) => {
+    revealNode(id)
+    if (!id) return
+    setNavigation((current) => {
+      if (current.ids[current.index] === id) return current
+      const ids = [...current.ids.slice(0, current.index + 1), id].slice(-40)
+      return { ids, index: ids.length - 1 }
+    })
+  }, [revealNode])
+
+  const goBack = useCallback(() => {
+    if (navigation.index <= 0) return
+    const index = navigation.index - 1
+    setNavigation((current) => ({ ...current, index }))
+    revealNode(navigation.ids[index])
+  }, [navigation, revealNode])
+
+  const goForward = useCallback(() => {
+    if (navigation.index >= navigation.ids.length - 1) return
+    const index = navigation.index + 1
+    setNavigation((current) => ({ ...current, index }))
+    revealNode(navigation.ids[index])
+  }, [navigation, revealNode])
+
   const selectEdge = useCallback((id: string | null) => {
     setSelectedEdgeId(id)
-    if (id) { setSelectedNodeId(null); setRightOpen(true) }
-  }, [])
+    if (id) { setSelectedNodeId(null); setSelectedIds([]); setRightOpen(true) }
+    else if (!selectedNodeId) setRightOpen(false)
+  }, [selectedNodeId])
 
   const addCanonicalNode = useCallback((node: TheoryNode, position: { x: number; y: number }) => {
     mutate((current) => {
@@ -164,20 +207,32 @@ export default function App() {
     setRightOpen(true)
   }, [mutate, viewId])
 
-  const createSeed = useCallback((title: string, type: TheoryNodeType) => {
+  const createSeed = useCallback((title: string, type: TheoryNodeType, link?: { relation: string; family: TheoryEdge['family'] }) => {
+    const sourceId = link ? selectedNodeId : null
     const node = createNode(title, type, [], actor)
     addCanonicalNode(node, seedPosition)
+    if (sourceId && link) {
+      mutate((current) => addEdge(current, createEdge(sourceId, node.id, link.relation, link.family, actor)))
+    }
     setModal(null)
-  }, [actor, addCanonicalNode, seedPosition])
+  }, [actor, addCanonicalNode, mutate, seedPosition, selectedNodeId])
 
   const openSeed = useCallback((position?: { x: number; y: number }) => {
     if (position) setSeedPosition(position)
+    else if (selectedNodeId && view?.positions[selectedNodeId]) {
+      const selectedPosition = view.positions[selectedNodeId]
+      const nearbyCount = document?.edges.filter((edge) => edge.from === selectedNodeId || edge.to === selectedNodeId).length ?? 0
+      setSeedPosition({
+        x: selectedPosition.x + 330,
+        y: selectedPosition.y + (nearbyCount % 4) * 130 - 120,
+      })
+    }
     else {
       const count = document?.nodes.filter((node) => node.epistemics.maturity === 'seed').length ?? 0
       setSeedPosition({ x: -1400 + (count % 5) * 290, y: -1000 + Math.floor(count / 5) * 210 })
     }
     setModal('seed')
-  }, [document?.nodes])
+  }, [document?.edges, document?.nodes, selectedNodeId, view?.positions])
 
   const createRelation = useCallback((relation: string, family: TheoryEdge['family']) => {
     if (!pendingConnection) return
@@ -279,21 +334,15 @@ export default function App() {
   }, [])
 
   const toggleEdgeFamily = useCallback((family: TheoryEdge['family']) => {
-    mutate((current) => touchDocument({
-      ...current,
-      views: current.views.map((item) => {
-        if (item.id !== viewId) return item
-        const active = item.visibleEdgeFamilies.includes(family)
-        if (active && item.visibleEdgeFamilies.length === 1) return item
-        return {
-          ...item,
-          visibleEdgeFamilies: active
-            ? item.visibleEdgeFamilies.filter((candidate) => candidate !== family)
-            : [...item.visibleEdgeFamilies, family],
-        }
-      }),
-    }))
-  }, [mutate, viewId])
+    setEdgeFamilyOverrides((current) => {
+      const existing = current[viewId] ?? new Set(view?.visibleEdgeFamilies ?? [])
+      if (existing.has(family) && existing.size === 1) return current
+      const next = new Set(existing)
+      if (next.has(family)) next.delete(family)
+      else next.add(family)
+      return { ...current, [viewId]: next }
+    })
+  }, [view?.visibleEdgeFamilies, viewId])
 
   const exportDocument = useCallback(() => {
     if (!document) return
@@ -327,10 +376,7 @@ export default function App() {
     input.click()
   }, [document, mutate, session])
 
-  const closeWelcome = useCallback(() => {
-    localStorage.setItem(WELCOME_KEY, 'seen')
-    setModal(null)
-  }, [])
+  const closeWelcome = useCallback(() => setModal(null), [])
 
   useEffect(() => {
     const isTyping = (target: EventTarget | null) => target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || (target instanceof HTMLElement && target.isContentEditable)
@@ -352,12 +398,14 @@ export default function App() {
   }, [modal, openSeed, redo, selectNode, selectedIds.length, selectedNodeId, undo])
 
   const commands = useMemo(() => [
-    { id: 'new-seed', label: 'Capture new seed', description: 'Place an uncommitted idea in the Inbox', icon: <Sparkles size={16} />, action: () => openSeed(), keywords: 'new add create' },
-    { id: 'forge', label: 'Open Unity Forge', description: selectedIds.length >= 2 ? `Synthesize ${selectedIds.length} selected forms` : 'Select two or more concepts first', icon: <GitMerge size={16} />, action: () => { if (selectedIds.length >= 2) setModal('forge') }, keywords: 'synthesis compress' },
+    { id: 'new-seed', label: 'Add a new idea', description: selectedNodeId ? 'Create it beside and optionally connect it to the selected idea' : 'Capture it in the Inbox', icon: <Sparkles size={16} />, action: () => openSeed(), keywords: 'new seed add create' },
+    { id: 'browse', label: 'Browse views and ideas', description: 'Open the searchable theory outline and review queues', icon: <CircleHelp size={16} />, action: () => { setLeftOpen(true); setRightOpen(false) }, keywords: 'outline health review views' },
+    { id: 'realise', label: 'Turn selected idea into action', description: selectedNodeId ? 'Create a linked practice or experiment' : 'Select an idea first', icon: <Sparkles size={16} />, action: () => { if (selectedNodeId) { setRealiseNodeId(selectedNodeId); setModal('realise') } }, keywords: 'realise practice experiment action' },
+    { id: 'forge', label: 'Combine selected ideas', description: selectedIds.length >= 2 ? `Synthesize ${selectedIds.length} selected ideas` : 'Select two or more ideas first', icon: <GitMerge size={16} />, action: () => { if (selectedIds.length >= 2) setModal('forge') }, keywords: 'forge synthesis compress' },
     { id: 'github', label: 'Repository connection', description: session ? `Connected as @${session.login}` : 'Enable automatic GitHub checkpoints', icon: <Github size={16} />, action: () => setModal('github'), keywords: 'save sync' },
     { id: 'undo', label: 'Undo recent change', description: 'Restore the prior local theory state', icon: <RotateCcw size={16} />, action: undo },
     { id: 'help', label: 'How the atlas works', description: 'Reopen the orientation guide', icon: <CircleHelp size={16} />, action: () => setModal('welcome') },
-  ], [openSeed, selectedIds.length, session, undo])
+  ], [openSeed, selectedIds.length, selectedNodeId, session, undo])
 
   if (!document || !view) {
     return <div className="loading-screen"><div className="unity-mark large" aria-hidden="true"><span /><span /><span /></div><p>Opening the Theory Observatory…</p></div>
@@ -369,10 +417,13 @@ export default function App() {
         view={view}
         focusDepth={focusDepth}
         selectedCount={selectedIds.length}
+        hasSelection={Boolean(selectedNodeId || selectedEdgeId)}
         session={session}
         syncState={syncState}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
+        canGoBack={navigation.index > 0}
+        canGoForward={navigation.index >= 0 && navigation.index < navigation.ids.length - 1}
         onToggleLeft={() => setLeftOpen((value) => {
           const next = !value
           if (next && window.matchMedia('(max-width: 979px)').matches) setRightOpen(false)
@@ -385,19 +436,25 @@ export default function App() {
         })}
         onSetFocusDepth={setFocusDepth}
         onCommand={() => setModal('commands')}
+        onNewIdea={() => openSeed()}
         onConnect={() => setModal('github')}
         onCheckpoint={() => void checkpointNow()}
         onForge={() => setModal('forge')}
         onExport={exportDocument}
         onImport={importDocument}
+        onUndo={undo}
+        onRedo={redo}
+        onGoBack={goBack}
+        onGoForward={goForward}
+        onHelp={() => setModal('welcome')}
         onRequestPanel={(panel) => {
           setLeftOpen(panel === 'left')
-          setRightOpen(panel === 'right')
+          setRightOpen(panel === 'right' && Boolean(selectedNodeId || selectedEdgeId))
         }}
         onHome={() => selectNode(view.rootNodeId ?? 'unity-core')}
       />
       <main className="workspace">
-        {leftOpen && <OutlinePanel document={document} currentView={view} selectedNodeId={selectedNodeId} onSelectNode={selectNode} onSelectView={(id) => { setViewId(id); setSelectedNodeId(null); setSelectedEdgeId(null); if (window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false) }} visiblePortals={visiblePortals} onTogglePortal={togglePortal} onNewSeed={() => openSeed()} visibleEdgeFamilies={new Set(view.visibleEdgeFamilies)} onToggleEdgeFamily={toggleEdgeFamily} onStartRelation={(id) => { selectNode(id); setInspectorTab('relations'); setRightOpen(true) }} onRequestClose={() => { if (window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false) }} />}
+        {leftOpen && <OutlinePanel document={document} currentView={view} selectedNodeId={selectedNodeId} onSelectNode={selectNode} onSelectView={(id) => { setViewId(id); selectNode(null) }} visiblePortals={visiblePortals} onTogglePortal={togglePortal} visibleEdgeFamilies={visibleEdgeFamilies} onToggleEdgeFamily={toggleEdgeFamily} onRequestClose={() => { if (window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false) }} />}
         <TheoryCanvas
           document={document}
           view={view}
@@ -405,6 +462,7 @@ export default function App() {
           selectedEdgeId={selectedEdgeId}
           focusDepth={focusDepth}
           visiblePortals={visiblePortals}
+          visibleEdgeFamilies={visibleEdgeFamilies}
           onSelectNode={selectNode}
           onSelectEdge={selectEdge}
           onSelectionChange={(ids) => setSelectedIds(ids)}
@@ -412,11 +470,11 @@ export default function App() {
           onCreateAt={openSeed}
           onConnect={connect}
         />
-        {rightOpen && <Inspector document={document} node={selectedNode} edge={selectedEdge} requestedTab={inspectorTab} onChangeNode={updateNode} onChangeEdge={updateEdge} onSelectNode={selectNode} onClose={() => setRightOpen(false)} onArchive={(id) => mutate((current) => archiveNode(current, id, actor))} onRealise={(id) => { setRealiseNodeId(id); setModal('realise') }} onBeginRelation={(from, to) => setPendingConnection({ from, to })} />}
+        {rightOpen && (selectedNode || selectedEdge) && <Inspector document={document} node={selectedNode} edge={selectedEdge} requestedTab={inspectorTab} onChangeNode={updateNode} onChangeEdge={updateEdge} onDeleteEdge={(id) => { mutate((current) => deleteEdge(current, id)); selectEdge(null) }} onSelectNode={selectNode} onClose={() => setRightOpen(false)} onArchive={(id) => mutate((current) => archiveNode(current, id, actor))} onRealise={(id) => { setRealiseNodeId(id); setModal('realise') }} onBeginRelation={(from, to) => setPendingConnection({ from, to })} />}
       </main>
 
       {modal === 'welcome' && <WelcomeDialog onClose={closeWelcome} />}
-      {modal === 'seed' && <NewSeedDialog onClose={() => setModal(null)} onCreate={createSeed} />}
+      {modal === 'seed' && <NewSeedDialog selectedNode={selectedNode} onClose={() => setModal(null)} onCreate={createSeed} />}
       {modal === 'github' && <GithubDialog config={config} session={session} onClose={() => setModal(null)} onConnected={handleConnectSession} onDisconnect={disconnect} />}
       {modal === 'forge' && forgeNodes.length >= 2 && <ForgeDialog nodes={forgeNodes} onClose={() => setModal(null)} onCreate={forge} />}
       {modal === 'realise' && realiseNode && <RealiseDialog node={realiseNode} onClose={() => { setModal(null); setRealiseNodeId(null) }} onCreate={realise} />}

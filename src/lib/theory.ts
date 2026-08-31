@@ -246,6 +246,18 @@ export function archiveNode(document: TheoryDocument, id: string, actor = 'Local
   }), actor)
 }
 
+export function deleteEdge(document: TheoryDocument, id: string): TheoryDocument {
+  if (!document.edges.some((edge) => edge.id === id)) return document
+  return touchDocument({
+    ...document,
+    edges: document.edges.filter((edge) => edge.id !== id),
+    tombstones: [
+      ...document.tombstones.filter((tombstone) => tombstone.id !== id),
+      { id, entity: 'edge', deletedAt: now() },
+    ],
+  })
+}
+
 function latestByTimestamp<T extends { id: string }>(
   left: T[],
   right: T[],

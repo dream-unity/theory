@@ -192,9 +192,9 @@ export function clearSession() {
   sessionStorage.removeItem(SESSION_KEY)
 }
 
-async function fetchJson(url: string): Promise<TheoryDocument | null> {
+async function fetchJson(url: string, cache: RequestCache = 'default'): Promise<TheoryDocument | null> {
   try {
-    const response = await fetch(url, { cache: 'no-store' })
+    const response = await fetch(url, { cache })
     if (!response.ok) return null
     const value: unknown = await response.json()
     return validateDocument(value) ? value : null
@@ -204,14 +204,13 @@ async function fetchJson(url: string): Promise<TheoryDocument | null> {
 }
 
 export async function loadPublishedDocument(): Promise<TheoryDocument | null> {
-  const raw = `https://raw.githubusercontent.com/dream-unity/theory/theory-live/public/data/theory.json?at=${Date.now()}`
-  const fromRepository = await fetchJson(raw)
-  if (fromRepository) return fromRepository
-  return fetchJson(`${import.meta.env.BASE_URL}data/theory.json?at=${Date.now()}`)
+  const bundled = await fetchJson(`${import.meta.env.BASE_URL}data/theory.json`)
+  if (bundled) return bundled
+  return fetchJson('https://raw.githubusercontent.com/dream-unity/theory/theory-live/public/data/theory.json', 'no-cache')
 }
 
 export async function resolveInitialDocument(seed: TheoryDocument): Promise<TheoryDocument> {
   const local = await loadLocalDocument()
   if (local) return local
-  return (await loadPublishedDocument()) ?? seed
+  return seed
 }
