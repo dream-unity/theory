@@ -65,14 +65,12 @@ function useBufferedDraft<T>(value: T, onCommit: (value: T) => void) {
   }, [])
 
   const update = useCallback((updater: T | ((current: T) => T)) => {
-    setDraft((current) => {
-      const next = typeof updater === 'function' ? (updater as (current: T) => T)(current) : updater
-      draftRef.current = next
-      dirtyRef.current = true
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current)
-      timerRef.current = window.setTimeout(flush, 320)
-      return next
-    })
+    const next = typeof updater === 'function' ? (updater as (current: T) => T)(draftRef.current) : updater
+    draftRef.current = next
+    dirtyRef.current = true
+    setDraft(next)
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(flush, 320)
   }, [flush])
 
   useEffect(() => {
