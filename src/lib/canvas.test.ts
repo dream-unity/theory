@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { neighborInDirection, spawnBeside } from './canvas'
+import { neighborInDirection, spawnBeside, tightenPositions } from './canvas'
 
 describe('canvas spatial helpers', () => {
   it('walks to the neighbour in a compass direction', () => {
@@ -21,5 +21,15 @@ describe('canvas spatial helpers', () => {
     const origin = { x: 0, y: 0 }
     expect(spawnBeside(origin, [])).toEqual({ x: 280, y: 0 })
     expect(spawnBeside(origin, [{ x: 280, y: 0 }]).y).toBeGreaterThan(0)
+  })
+
+  it('pulls cards toward the shared centre', () => {
+    const next = tightenPositions({
+      a: { x: 0, y: 0 },
+      b: { x: 1000, y: 0 },
+    }, 0.5)
+    expect(next.a.x).toBeGreaterThan(0)
+    expect(next.b.x).toBeLessThan(1000)
+    expect(next.b.x - next.a.x).toBe(500)
   })
 })

@@ -52,3 +52,22 @@ export function clientPoint(event: MouseEvent | TouchEvent): Point {
   const mouse = event as MouseEvent
   return { x: mouse.clientX, y: mouse.clientY }
 }
+
+/** Pull a sparse map toward its centre so cards sit closer without changing their relative order. */
+export function tightenPositions(
+  positions: Record<string, Point>,
+  scale = 0.62,
+): Record<string, Point> {
+  const points = Object.values(positions)
+  if (points.length < 2) return positions
+  const cx = points.reduce((sum, point) => sum + point.x, 0) / points.length
+  const cy = points.reduce((sum, point) => sum + point.y, 0) / points.length
+  const next: Record<string, Point> = {}
+  for (const [id, point] of Object.entries(positions)) {
+    next[id] = {
+      x: cx + (point.x - cx) * scale,
+      y: cy + (point.y - cy) * scale,
+    }
+  }
+  return next
+}
