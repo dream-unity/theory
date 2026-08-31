@@ -33,6 +33,17 @@ npm run build
 npm run preview
 ```
 
+Before committing a release, refresh the branch-compatible GitHub Pages files:
+
+```bash
+npm run pages:prepare
+```
+
+The editable Vite source entry is `app.html`. The generated root `index.html`,
+`assets/`, `data/`, and `runtime-config.json` mirror the production build so the
+site remains valid whether GitHub Pages is configured for Actions artifacts or
+for the `main` branch root.
+
 ## GitHub autosave
 
 The public application never contains a repository credential.

@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   base: '/theory/',
   build: {
+    rollupOptions: {
+      input: 'app.html',
+    },
     sourcemap: true,
     target: 'es2022',
   },
