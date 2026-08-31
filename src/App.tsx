@@ -1,0 +1,391 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Connection } from '@xyflow/react'
+import { CircleHelp, GitMerge, Github, RotateCcw, Sparkles } from 'lucide-react'
+import { Header } from './components/Header'
+import { Inspector } from './components/Inspector'
+import {
+  CommandPalette,
+  ConflictDialog,
+  ForgeDialog,
+  GithubDialog,
+  NewSeedDialog,
+  RealiseDialog,
+  RelationDialog,
+  WelcomeDialog,
+  type ForgePayload,
+  type RealisePayload,
+} from './components/Modals'
+import { OutlinePanel } from './components/OutlinePanel'
+import { TheoryCanvas } from './components/TheoryCanvas'
+import { useAutosave } from './hooks/useAutosave'
+import { completeGithubOAuth, connectWithToken, loadRuntimeConfig } from './lib/github'
+import { clearSession, loadSession, resolveInitialDocument, saveSession } from './lib/local-store'
+import {
+  addEdge,
+  addNodeToView,
+  archiveNode,
+  createEdge,
+  createNode,
+  now,
+  touchDocument,
+  updateNodePosition,
+  validateDocument,
+  withUpdatedEdge,
+  withUpdatedNode,
+} from './lib/theory'
+import { SEED_DOCUMENT } from './seed'
+import type { GithubSession, Portal, RuntimeConfig, TheoryDocument, TheoryEdge, TheoryNode, TheoryNodeType } from './types'
+
+type ModalName = 'seed' | 'github' | 'forge' | 'realise' | 'commands' | 'welcome' | null
+
+const WELCOME_KEY = 'dream-unity:atlas-welcome:v1'
+
+export default function App() {
+  const [document, setDocument] = useState<TheoryDocument | null>(null)
+  const [config, setConfig] = useState<RuntimeConfig>({ repository: 'dream-unity/theory', branch: 'theory-live', dataPath: 'public/data/theory.json' })
+  const [session, setSession] = useState<GithubSession | null>(() => loadSession())
+  const [viewId, setViewId] = useState('whole-theory')
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [focusDepth, setFocusDepth] = useState<0 | 1 | 2>(0)
+  const [visiblePortals, setVisiblePortals] = useState<Set<string>>(new Set(['maker', 'machine', 'world', 'unity']))
+  const [leftOpen, setLeftOpen] = useState(true)
+  const [rightOpen, setRightOpen] = useState(true)
+  const [modal, setModal] = useState<ModalName>(() => localStorage.getItem(WELCOME_KEY) ? null : 'welcome')
+  const [inspectorTab, setInspectorTab] = useState<'essence' | 'relations' | 'grounding' | 'mirror'>('essence')
+  const [seedPosition, setSeedPosition] = useState<{ x: number; y: number }>({ x: -50, y: -760 })
+  const [pendingConnection, setPendingConnection] = useState<{ from: string; to: string } | null>(null)
+  const [realiseNodeId, setRealiseNodeId] = useState<string | null>(null)
+  const undoStack = useRef<TheoryDocument[]>([])
+  const redoStack = useRef<TheoryDocument[]>([])
+  const lastHistoryAt = useRef(0)
+
+  useEffect(() => {
+    let cancelled = false
+    void Promise.all([resolveInitialDocument(SEED_DOCUMENT), loadRuntimeConfig()]).then(async ([initial, runtime]) => {
+      if (cancelled) return
+      setConfig(runtime)
+      setDocument(initial)
+      if (runtime.githubOAuthClientId) {
+        try {
+          const token = await completeGithubOAuth(runtime.githubOAuthClientId)
+          if (token) {
+            const connected = await connectWithToken(token, runtime)
+            saveSession(connected)
+            setSession(connected)
+          }
+        } catch (error) {
+          console.error(error)
+          setModal('github')
+        }
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const mutate = useCallback((updater: (current: TheoryDocument) => TheoryDocument, recordHistory = true) => {
+    setDocument((current) => {
+      if (!current) return current
+      if (recordHistory && Date.now() - lastHistoryAt.current > 650) {
+        undoStack.current = [...undoStack.current.slice(-59), current]
+        redoStack.current = []
+        lastHistoryAt.current = Date.now()
+      }
+      return updater(current)
+    })
+  }, [])
+
+  const undo = useCallback(() => {
+    setDocument((current) => {
+      const previous = undoStack.current.pop()
+      if (!current || !previous) return current
+      redoStack.current.push(current)
+      return touchDocument(previous)
+    })
+  }, [])
+
+  const redo = useCallback(() => {
+    setDocument((current) => {
+      const next = redoStack.current.pop()
+      if (!current || !next) return current
+      undoStack.current.push(current)
+      return touchDocument(next)
+    })
+  }, [])
+
+  const { syncState, conflict, checkpointNow, resolveConflict } = useAutosave(document, setDocument, session)
+
+  const view = useMemo(() => document?.views.find((item) => item.id === viewId) ?? document?.views[0], [document, viewId])
+  const selectedNode = useMemo(() => document?.nodes.find((node) => node.id === selectedNodeId) ?? null, [document, selectedNodeId])
+  const selectedEdge = useMemo(() => document?.edges.find((edge) => edge.id === selectedEdgeId) ?? null, [document, selectedEdgeId])
+  const forgeNodes = useMemo(() => document?.nodes.filter((node) => selectedIds.includes(node.id)) ?? [], [document, selectedIds])
+  const realiseNode = useMemo(() => document?.nodes.find((node) => node.id === realiseNodeId) ?? null, [document, realiseNodeId])
+  const relationSource = useMemo(() => document?.nodes.find((node) => node.id === pendingConnection?.from), [document, pendingConnection])
+  const relationTarget = useMemo(() => document?.nodes.find((node) => node.id === pendingConnection?.to), [document, pendingConnection])
+
+  const selectNode = useCallback((id: string | null) => {
+    setSelectedNodeId(id)
+    setSelectedEdgeId(null)
+    if (id) {
+      setSelectedIds([id])
+      setRightOpen(true)
+    }
+  }, [])
+
+  const selectEdge = useCallback((id: string | null) => {
+    setSelectedEdgeId(id)
+    if (id) { setSelectedNodeId(null); setRightOpen(true) }
+  }, [])
+
+  const addCanonicalNode = useCallback((node: TheoryNode, position: { x: number; y: number }) => {
+    mutate((current) => {
+      const activeView = current.views.find((item) => item.id === viewId) ?? current.views[0]
+      let next = addNodeToView(current, node, activeView.id, position)
+      if (activeView.id !== 'whole-theory') {
+        const whole = next.views.find((item) => item.id === 'whole-theory')
+        if (whole) {
+          next = touchDocument({
+            ...next,
+            views: next.views.map((item) => item.id === 'whole-theory' ? {
+              ...item,
+              includedNodeIds: [...item.includedNodeIds, node.id],
+              positions: { ...item.positions, [node.id]: { x: -1750, y: -620 + (item.includedNodeIds.length % 8) * 190, updatedAt: now() } },
+            } : item),
+          })
+        }
+      }
+      return next
+    })
+    setSelectedNodeId(node.id)
+    setSelectedIds([node.id])
+    setRightOpen(true)
+  }, [mutate, viewId])
+
+  const createSeed = useCallback((title: string, type: TheoryNodeType) => {
+    const node = createNode(title, type)
+    addCanonicalNode(node, seedPosition)
+    setModal(null)
+  }, [addCanonicalNode, seedPosition])
+
+  const openSeed = useCallback((position?: { x: number; y: number }) => {
+    if (position) setSeedPosition(position)
+    else {
+      const count = document?.nodes.filter((node) => node.epistemics.maturity === 'seed').length ?? 0
+      setSeedPosition({ x: -1400 + (count % 5) * 290, y: -1000 + Math.floor(count / 5) * 210 })
+    }
+    setModal('seed')
+  }, [document?.nodes])
+
+  const createRelation = useCallback((relation: string, family: TheoryEdge['family']) => {
+    if (!pendingConnection) return
+    const edge = createEdge(pendingConnection.from, pendingConnection.to, relation, family)
+    mutate((current) => addEdge(current, edge))
+    setPendingConnection(null)
+    setSelectedEdgeId(edge.id)
+    setSelectedNodeId(null)
+    setRightOpen(true)
+  }, [mutate, pendingConnection])
+
+  const connect = useCallback((connection: Connection) => {
+    if (!connection.source || !connection.target || connection.source === connection.target) return
+    setPendingConnection({ from: connection.source, to: connection.target })
+  }, [])
+
+  const updateNode = useCallback((node: TheoryNode) => {
+    mutate((current) => withUpdatedNode(current, node.id, () => node))
+  }, [mutate])
+
+  const updateEdge = useCallback((edge: TheoryEdge) => {
+    mutate((current) => withUpdatedEdge(current, edge.id, () => edge))
+  }, [mutate])
+
+  const forge = useCallback((payload: ForgePayload) => {
+    if (forgeNodes.length < 2 || !view) return
+    const title = payload.emergence.length > 72 ? `${payload.emergence.slice(0, 69)}…` : payload.emergence
+    const synthesis = createNode(title, 'synthesis', forgeNodes.map((node) => node.id))
+    synthesis.essence = payload.emergence
+    synthesis.bodyMarkdown = [
+      '## Shared invariant', payload.invariant || '_Not yet articulated._',
+      '## Irreducible differences', payload.differences || '_Not yet articulated._',
+      '## Unresolved tensions', payload.tensions || '_None yet recorded._',
+      '## Practical consequences', payload.consequences || '_Not yet realised._',
+      '## What this compression omits', payload.omissions || '_Not yet recorded._',
+    ].join('\n\n')
+    synthesis.facets.portals = Array.from(new Set([...forgeNodes.flatMap((node) => node.facets.portals), 'unity']))
+    synthesis.facets.forms = Array.from(new Set(forgeNodes.flatMap((node) => node.facets.forms)))
+    synthesis.facets.phases = ['synthesis']
+    synthesis.epistemics.maturity = 'articulated'
+    const states = forgeNodes.map((node) => view.positions[node.id]).filter(Boolean)
+    const position = states.length ? {
+      x: states.reduce((sum, item) => sum + item.x, 0) / states.length,
+      y: states.reduce((sum, item) => sum + item.y, 0) / states.length + 320,
+    } : { x: 0, y: 300 }
+    mutate((current) => {
+      let next = addNodeToView(current, synthesis, view.id, position)
+      if (view.id !== 'whole-theory') {
+        next = touchDocument({ ...next, views: next.views.map((item) => item.id === 'whole-theory' ? { ...item, includedNodeIds: [...item.includedNodeIds, synthesis.id], positions: { ...item.positions, [synthesis.id]: { ...position, updatedAt: now() } } } : item) })
+      }
+      for (const source of forgeNodes) next = addEdge(next, createEdge(source.id, synthesis.id, 'synthesises into', 'integration'))
+      return next
+    })
+    setSelectedNodeId(synthesis.id)
+    setSelectedIds([synthesis.id])
+    setModal(null)
+  }, [forgeNodes, mutate, view])
+
+  const realise = useCallback((payload: RealisePayload) => {
+    if (!realiseNode || !view) return
+    const practice = createNode(payload.title, 'practice', [realiseNode.id])
+    practice.essence = payload.action
+    practice.bodyMarkdown = `## Action\n\n${payload.action}\n\n## Expected observation\n\n${payload.expected || '_Not yet specified._'}\n\n## Observed outcome\n\n${payload.observed || '_Awaiting practice._'}`
+    practice.facets.portals = Array.from(new Set([...realiseNode.facets.portals, 'world']))
+    practice.facets.forms = Array.from(new Set([...realiseNode.facets.forms, 'strategic']))
+    practice.facets.phases = ['realisation', 'reflection']
+    const sourcePosition = view.positions[realiseNode.id] ?? { x: 0, y: 0 }
+    const position = { x: sourcePosition.x + 360, y: sourcePosition.y + 280 }
+    mutate((current) => {
+      let next = addNodeToView(current, practice, view.id, position)
+      if (view.id !== 'whole-theory') {
+        next = touchDocument({ ...next, views: next.views.map((item) => item.id === 'whole-theory' ? { ...item, includedNodeIds: [...item.includedNodeIds, practice.id], positions: { ...item.positions, [practice.id]: { ...position, updatedAt: now() } } } : item) })
+      }
+      return addEdge(next, createEdge(realiseNode.id, practice.id, 'realises as', 'integration'))
+    })
+    setSelectedNodeId(practice.id)
+    setSelectedIds([practice.id])
+    setRealiseNodeId(null)
+    setModal(null)
+  }, [mutate, realiseNode, view])
+
+  const handleConnectSession = useCallback((connected: GithubSession) => {
+    saveSession(connected)
+    setSession(connected)
+    setModal(null)
+  }, [])
+
+  const disconnect = useCallback(() => {
+    clearSession(); setSession(null); setModal(null)
+  }, [])
+
+  const togglePortal = useCallback((portal: Portal) => {
+    setVisiblePortals((current) => {
+      const next = new Set(current)
+      if (next.has(portal) && next.size > 1) next.delete(portal)
+      else next.add(portal)
+      return next
+    })
+  }, [])
+
+  const exportDocument = useCallback(() => {
+    if (!document) return
+    const blob = new Blob([`${JSON.stringify(document, null, 2)}\n`], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = window.document.createElement('a')
+    anchor.href = url
+    anchor.download = `dream-unity-theory-${new Date().toISOString().slice(0, 10)}.json`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }, [document])
+
+  const importDocument = useCallback(() => {
+    const input = window.document.createElement('input')
+    input.type = 'file'; input.accept = 'application/json,.json'
+    input.onchange = () => {
+      const file = input.files?.[0]
+      if (!file) return
+      void file.text().then((text) => {
+        const value: unknown = JSON.parse(text)
+        if (!validateDocument(value)) throw new Error('This file is not a Dream Unity theory document.')
+        mutate(() => touchDocument(value))
+        setViewId(value.views[0]?.id ?? 'whole-theory')
+      }).catch((error: unknown) => alert(error instanceof Error ? error.message : 'Import failed'))
+    }
+    input.click()
+  }, [mutate])
+
+  const closeWelcome = useCallback(() => {
+    localStorage.setItem(WELCOME_KEY, 'seen')
+    setModal(null)
+  }, [])
+
+  useEffect(() => {
+    const isTyping = (target: EventTarget | null) => target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || (target instanceof HTMLElement && target.isContentEditable)
+    const handleKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setModal('commands'); return }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); return }
+      if (isTyping(event.target) || modal) return
+      if (event.key === '/' || event.key.toLowerCase() === 'k') { event.preventDefault(); setModal('commands') }
+      else if (event.key.toLowerCase() === 'n') openSeed()
+      else if (event.key.toLowerCase() === 'f') setFocusDepth((current) => current === 0 ? 1 : current === 1 ? 2 : 0)
+      else if (event.key.toLowerCase() === 'm' && selectedNodeId) { setInspectorTab('mirror'); setRightOpen(true) }
+      else if (event.key.toLowerCase() === 's' && selectedIds.length >= 2) setModal('forge')
+      else if (event.key.toLowerCase() === 'r' && selectedNodeId) { setRealiseNodeId(selectedNodeId); setModal('realise') }
+      else if (event.key === 'Home') selectNode('unity-core')
+      else if (event.key === '?') setModal('welcome')
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [modal, openSeed, redo, selectNode, selectedIds.length, selectedNodeId, undo])
+
+  const commands = useMemo(() => [
+    { id: 'new-seed', label: 'Capture new seed', description: 'Place an uncommitted idea in Ether', icon: <Sparkles size={16} />, action: () => openSeed(), keywords: 'new add create' },
+    { id: 'forge', label: 'Open Unity Forge', description: selectedIds.length >= 2 ? `Synthesize ${selectedIds.length} selected forms` : 'Select two or more concepts first', icon: <GitMerge size={16} />, action: () => { if (selectedIds.length >= 2) setModal('forge') }, keywords: 'synthesis compress' },
+    { id: 'github', label: 'Repository connection', description: session ? `Connected as @${session.login}` : 'Enable automatic GitHub checkpoints', icon: <Github size={16} />, action: () => setModal('github'), keywords: 'save sync' },
+    { id: 'undo', label: 'Undo recent change', description: 'Restore the prior local theory state', icon: <RotateCcw size={16} />, action: undo },
+    { id: 'help', label: 'How the atlas works', description: 'Reopen the orientation guide', icon: <CircleHelp size={16} />, action: () => setModal('welcome') },
+  ], [openSeed, selectedIds.length, session, undo])
+
+  if (!document || !view) {
+    return <div className="loading-screen"><div className="unity-mark large" aria-hidden="true"><span /><span /><span /></div><p>Opening the Theory Observatory…</p></div>
+  }
+
+  return (
+    <div className={`app-shell ${leftOpen ? 'left-open' : 'left-closed'} ${rightOpen ? 'right-open' : 'right-closed'}`}>
+      <Header
+        view={view}
+        focusDepth={focusDepth}
+        selectedCount={selectedIds.length}
+        session={session}
+        syncState={syncState}
+        leftOpen={leftOpen}
+        rightOpen={rightOpen}
+        onToggleLeft={() => setLeftOpen((value) => !value)}
+        onToggleRight={() => setRightOpen((value) => !value)}
+        onSetFocusDepth={setFocusDepth}
+        onCommand={() => setModal('commands')}
+        onConnect={() => setModal('github')}
+        onCheckpoint={() => void checkpointNow()}
+        onForge={() => setModal('forge')}
+        onExport={exportDocument}
+        onImport={importDocument}
+      />
+      <main className="workspace">
+        {leftOpen && <OutlinePanel document={document} currentView={view} selectedNodeId={selectedNodeId} onSelectNode={selectNode} onSelectView={(id) => { setViewId(id); setSelectedNodeId(null); setSelectedEdgeId(null) }} visiblePortals={visiblePortals} onTogglePortal={togglePortal} onNewSeed={() => openSeed()} />}
+        <TheoryCanvas
+          document={document}
+          view={view}
+          selectedNodeId={selectedNodeId}
+          selectedEdgeId={selectedEdgeId}
+          focusDepth={focusDepth}
+          visiblePortals={visiblePortals}
+          onSelectNode={selectNode}
+          onSelectEdge={selectEdge}
+          onSelectionChange={(ids) => setSelectedIds(ids)}
+          onMoveNode={(id, position) => mutate((current) => updateNodePosition(current, view.id, id, position), false)}
+          onCreateAt={openSeed}
+          onConnect={connect}
+        />
+        {rightOpen && <Inspector document={document} node={selectedNode} edge={selectedEdge} requestedTab={inspectorTab} onChangeNode={updateNode} onChangeEdge={updateEdge} onSelectNode={selectNode} onClose={() => setRightOpen(false)} onArchive={(id) => mutate((current) => archiveNode(current, id))} onRealise={(id) => { setRealiseNodeId(id); setModal('realise') }} />}
+      </main>
+
+      {modal === 'welcome' && <WelcomeDialog onClose={closeWelcome} />}
+      {modal === 'seed' && <NewSeedDialog onClose={() => setModal(null)} onCreate={createSeed} />}
+      {modal === 'github' && <GithubDialog config={config} session={session} onClose={() => setModal(null)} onConnected={handleConnectSession} onDisconnect={disconnect} />}
+      {modal === 'forge' && forgeNodes.length >= 2 && <ForgeDialog nodes={forgeNodes} onClose={() => setModal(null)} onCreate={forge} />}
+      {modal === 'realise' && realiseNode && <RealiseDialog node={realiseNode} onClose={() => { setModal(null); setRealiseNodeId(null) }} onCreate={realise} />}
+      {modal === 'commands' && <CommandPalette document={document} onClose={() => setModal(null)} onSelectNode={selectNode} commands={commands} />}
+      {pendingConnection && relationSource && relationTarget && <RelationDialog source={relationSource} target={relationTarget} onClose={() => setPendingConnection(null)} onCreate={createRelation} />}
+      {conflict && <ConflictDialog local={document} remote={conflict.remote} onClose={() => setModal(null)} onResolve={(choice) => void resolveConflict(choice)} />}
+    </div>
+  )
+}
