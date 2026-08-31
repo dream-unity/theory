@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -35,59 +35,72 @@ export function AtlasCanvas(props: {
   onOpenDossier: (id: string) => void
 }) {
   const { doc, view, selectedId, editing, onSelect, onMove, onConnectNodes, onAddAt, onChangeNotes, onChangeTitle, onOpenDossier } = props
-  const concepts = visibleConcepts(doc, view)
-  const relations = visibleRelations(doc, view)
 
-  const builtNodes = useMemo<ConceptFlowNode[]>(
-    () =>
-      concepts.map((concept) => ({
-        id: concept.id,
-        type: 'concept',
-        position: doc.positions[concept.id] ?? { x: 40, y: 40 },
-        data: { concept, selected: concept.id === selectedId, editing, onChangeNotes, onChangeTitle, onOpenDossier },
-        style: { width: concept.kind === 'core' ? 320 : 228 },
-        zIndex: concept.kind === 'core' ? 8 : 1,
-      })),
-    [concepts, doc.positions, selectedId, editing, onChangeNotes, onChangeTitle, onOpenDossier],
-  )
+  const callbacks = useRef({ onChangeNotes, onChangeTitle, onOpenDossier, onMove, onConnectNodes, onAddAt, onSelect })
+  callbacks.current = { onChangeNotes, onChangeTitle, onOpenDossier, onMove, onConnectNodes, onAddAt, onSelect }
 
-  const builtEdges = useMemo<Edge[]>(
-    () =>
-      relations.map((relation) => {
-        const from = doc.concepts.find((concept) => concept.id === relation.from)
-        const accent = QUADRANT_META[(from?.quadrant ?? 'unity') as Quadrant].accent
-        return {
-          id: relation.id,
-          source: relation.from,
-          target: relation.to,
-          label: relation.verb,
-          markerEnd: { type: MarkerType.ArrowClosed, color: accent, width: 16, height: 16 },
-          style: { stroke: accent, strokeWidth: 1.7 },
-          labelStyle: { fill: '#d7e4ef', fontSize: 11, fontWeight: 600 },
-          labelBgStyle: { fill: 'rgba(8, 14, 24, 0.86)' },
-          labelBgPadding: [6, 4] as [number, number],
-          labelBgBorderRadius: 8,
-        }
-      }),
-    [relations, doc.concepts],
-  )
+  const builtNodes = useMemo<ConceptFlowNode[]>(() => {
+    return visibleConcepts(doc, view).map((concept) => ({
+      id: concept.id,
+      type: 'concept',
+      position: doc.positions[concept.id] ?? { x: 40, y: 40 },
+      data: {
+        concept,
+        selected: concept.id === selectedId,
+        editing,
+        onChangeNotes: (id, notes) => callbacks.current.onChangeNotes(id, notes),
+        onChangeTitle: (id, title) => callbacks.current.onChangeTitle(id, title),
+        onOpenDossier: (id) => callbacks.current.onOpenDossier(id),
+      },
+      style: { width: concept.kind === 'core' ? 320 : 228 },
+      zIndex: concept.kind === 'core' ? 8 : 1,
+    }))
+  }, [doc, view, selectedId, editing])
+
+  const builtEdges = useMemo<Edge[]>(() => {
+    return visibleRelations(doc, view).map((relation) => {
+      const from = doc.concepts.find((concept) => concept.id === relation.from)
+      const accent = QUADRANT_META[(from?.quadrant ?? 'unity') as Quadrant].accent
+      return {
+        id: relation.id,
+        source: relation.from,
+        target: relation.to,
+        label: relation.verb,
+        markerEnd: { type: MarkerType.ArrowClosed, color: accent, width: 16, height: 16 },
+        style: { stroke: accent, strokeWidth: 1.7 },
+        labelStyle: { fill: '#d7e4ef', fontSize: 11, fontWeight: 600 },
+        labelBgStyle: { fill: 'rgba(8, 14, 24, 0.86)' },
+        labelBgPadding: [6, 4] as [number, number],
+        labelBgBorderRadius: 8,
+      }
+    })
+  }, [doc, view])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(builtEdges)
+  const lastSig = useRef('')
 
   useEffect(() => {
+    const sig = `${view}:${builtNodes.map((node) => node.id).join(',')}:${doc.revision}:${selectedId}:${editing}`
+    if (sig === lastSig.current) {
+      setNodes((current) =>
+        current.map((node) => {
+          const next = builtNodes.find((item) => item.id === node.id)
+          return next ? { ...node, data: next.data } : node
+        }),
+      )
+      return
+    }
+    lastSig.current = sig
     setNodes(builtNodes)
     setEdges(builtEdges)
-  }, [builtNodes, builtEdges, setNodes, setEdges])
+  }, [builtNodes, builtEdges, doc.revision, editing, selectedId, setEdges, setNodes, view])
 
-  const onConnect = useCallback<OnConnect>(
-    (connection: Connection) => {
-      if (!connection.source || !connection.target) return
-      setEdges((current) => addEdge({ ...connection, label: 'relates to' }, current))
-      onConnectNodes(connection.source, connection.target)
-    },
-    [onConnectNodes, setEdges],
-  )
+  const onConnect = useCallback<OnConnect>((connection: Connection) => {
+    if (!connection.source || !connection.target) return
+    setEdges((current) => addEdge({ ...connection, label: 'relates to' }, current))
+    callbacks.current.onConnectNodes(connection.source, connection.target)
+  }, [setEdges])
 
   const [menu, setMenu] = useState<{ x: number; y: number; flowX: number; flowY: number } | null>(null)
 
@@ -107,7 +120,7 @@ export function AtlasCanvas(props: {
           onNodesChange(changes)
           for (const change of changes) {
             if (change.type === 'position' && change.position && !change.dragging) {
-              onMove(change.id, change.position.x, change.position.y)
+              callbacks.current.onMove(change.id, change.position.x, change.position.y)
             }
           }
         }}
@@ -115,9 +128,9 @@ export function AtlasCanvas(props: {
         onConnect={onConnect}
         onPaneClick={() => {
           setMenu(null)
-          onSelect(null)
+          callbacks.current.onSelect(null)
         }}
-        onNodeClick={(_, node) => onSelect(node.id)}
+        onNodeClick={(_, node) => callbacks.current.onSelect(node.id)}
         onPaneContextMenu={(event) => {
           event.preventDefault()
           const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
@@ -158,7 +171,7 @@ export function AtlasCanvas(props: {
           <button
             type="button"
             onClick={() => {
-              onAddAt(menu.flowX, menu.flowY)
+              callbacks.current.onAddAt(menu.flowX, menu.flowY)
               setMenu(null)
             }}
           >
