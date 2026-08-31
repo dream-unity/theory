@@ -15,7 +15,7 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Eye, Link2, Maximize2, PanelRightOpen, Plus } from 'lucide-react'
+import { Eye, Link2, Maximize2, PanelRightOpen, Plus, Sparkles } from 'lucide-react'
 import { clientPoint } from '../lib/canvas'
 import type { Portal, TheoryDocument, TheoryEdge, TheoryView } from '../types'
 import { ConceptNode, type ConceptCardData, type ConceptFlowNode } from './ConceptNode'
@@ -92,20 +92,22 @@ interface TheoryCanvasProps {
   view: TheoryView
   selectedNodeId: string | null
   selectedEdgeId: string | null
-  editingNodeId: string | null
+  editingNodeId?: string | null
   focusDepth: 0 | 1 | 2
-  lasso: boolean
-  camera: CameraRequest | null
+  lasso?: boolean
+  camera?: CameraRequest | null
   visiblePortals: Set<string>
   visibleEdgeFamilies: Set<TheoryEdge['family']>
   onSelectNode: (id: string | null) => void
-  onInspectNode: (id: string) => void
+  onInspectNode?: (id: string) => void
   onSelectEdge: (id: string | null) => void
   onSelectionChange: (ids: string[]) => void
   onMoveNode: (id: string, position: { x: number; y: number }) => void
   onCreateAt: (position: { x: number; y: number }, connectFrom?: string) => void
   onConnect: (connection: Connection) => void
-  onSetLasso: (value: boolean) => void
+  onSetLasso?: (value: boolean) => void
+  onTighten?: () => void
+  onRenameNode?: (id: string) => void
 }
 
 export function TheoryCanvas({
@@ -113,10 +115,10 @@ export function TheoryCanvas({
   view,
   selectedNodeId,
   selectedEdgeId,
-  editingNodeId,
+  editingNodeId = null,
   focusDepth,
-  lasso,
-  camera,
+  lasso = false,
+  camera = null,
   visiblePortals,
   visibleEdgeFamilies,
   onSelectNode,
@@ -127,14 +129,21 @@ export function TheoryCanvas({
   onCreateAt,
   onConnect,
   onSetLasso,
+  onTighten,
+  onRenameNode,
 }: TheoryCanvasProps) {
+  const inspect = onInspectNode ?? ((id: string) => onSelectNode(id))
+  const setLassoMode = onSetLasso ?? (() => undefined)
+  const tighten = onTighten ?? (() => undefined)
   const [instance, setInstance] = useState<ReactFlowInstance<ConceptFlowNode, Edge> | null>(null)
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
   const [hintVisible, setHintVisible] = useState(true)
+  const [spacePan, setSpacePan] = useState(false)
+  const [menu, setMenu] = useState<{ x: number; y: number; nodeId?: string; flow?: { x: number; y: number } } | null>(null)
   const [transitionDuration] = useState(preferredTransitionDuration)
   const hideHint = useCallback(() => setHintVisible(false), [])
-  const lastView = useRef<string | null>(null)
+  const lastFitKey = useRef<string | null>(null)
 
   const neighborhood = useMemo(() => {
     if (!selectedNodeId || focusDepth === 0) return null
@@ -162,20 +171,22 @@ export function TheoryCanvas({
   }, [document.edges])
 
   const visibleConcepts = useMemo(() => {
-    const included = new Set(view.includedNodeIds)
+    const included = view.id === 'whole-theory'
+      ? new Set(document.nodes.map((concept) => concept.id))
+      : new Set(view.includedNodeIds)
     return document.nodes.filter((concept) =>
       included.has(concept.id) &&
-      (concept.facets.portals.length === 0 || concept.facets.portals.some((portal) => visiblePortals.has(portal))) &&
-      !view.positions[concept.id]?.hidden,
+      (concept.facets.portals.length === 0 || concept.facets.portals.some((portal) => visiblePortals.has(portal))),
     )
-  }, [document.nodes, view.includedNodeIds, view.positions, visiblePortals])
+  }, [document.nodes, view.id, view.includedNodeIds, visiblePortals])
 
-  const derivedNodes = useMemo<ConceptFlowNode[]>(() => visibleConcepts.map((concept) => {
+  const derivedNodes = useMemo<ConceptFlowNode[]>(() => visibleConcepts.map((concept, index) => {
     const portals = concept.facets.portals
+    const stored = view.positions[concept.id]
     return {
       id: concept.id,
       type: 'concept',
-      position: view.positions[concept.id] ?? { x: 0, y: 0 },
+      position: stored ?? { x: (index % 6) * 260 - 650, y: Math.floor(index / 6) * 140 - 280 },
       selected: concept.id === selectedNodeId,
       data: {
         title: concept.title,
@@ -201,7 +212,7 @@ export function TheoryCanvas({
     document.edges
       .filter((edge) => nodeIds.has(edge.from) && nodeIds.has(edge.to) && visibleEdgeFamilies.has(edge.family))
       .map((edge) => {
-        const connected = edge.from === selectedNodeId || edge.to === selectedNodeId
+        const connected = edge.from === selectedNodeId || edge.to === selectedNodeId || edge.from === hoveredNodeId || edge.to === hoveredNodeId
         const dimmed = !!neighborhood && (!neighborhood.has(edge.from) || !neighborhood.has(edge.to))
         const highlighted = edge.id === selectedEdgeId || edge.id === hoveredEdgeId
         const superseded = edge.status === 'superseded'
@@ -211,41 +222,51 @@ export function TheoryCanvas({
           target: edge.to,
           sourceHandle: 'bottom',
           targetHandle: 'top',
-          label: highlighted ? `${edge.relation}${superseded ? ' · superseded' : ''}` : undefined,
+          label: highlighted || connected ? `${edge.relation}${superseded ? ' · superseded' : ''}` : edge.relation,
           type: 'smoothstep',
           selected: edge.id === selectedEdgeId,
-          animated: false,
-          interactionWidth: 28,
+          animated: highlighted || connected,
+          interactionWidth: 36,
           style: {
             stroke: superseded ? '#64748b' : edgeColors[edge.family],
-            strokeWidth: highlighted ? 2.6 : connected ? 2 : 1.15,
-            opacity: dimmed ? 0.08 : superseded ? highlighted ? 0.55 : 0.16 : highlighted ? 1 : connected ? 0.9 : 0.42,
+            strokeWidth: highlighted ? 3 : connected ? 2.4 : 1.85,
+            opacity: dimmed ? 0.16 : superseded ? highlighted ? 0.55 : 0.28 : highlighted ? 1 : connected ? 0.98 : 0.72,
             strokeDasharray: superseded ? '2 8' : edge.status === 'contested' ? '6 5' : undefined,
           },
-          labelStyle: { fill: '#172033', fontSize: 11, fontWeight: 650 },
-          labelBgStyle: { fill: '#ffffff', fillOpacity: 0.96 },
-          labelBgPadding: [6, 3] as [number, number],
+          labelStyle: {
+            fill: highlighted || connected ? '#172033' : '#5b6b80',
+            fontSize: highlighted || connected ? 11 : 10,
+            fontWeight: highlighted || connected ? 650 : 600,
+          },
+          labelBgStyle: { fill: '#ffffff', fillOpacity: highlighted || connected ? 0.96 : 0.82 },
+          labelBgPadding: [5, 2] as [number, number],
           labelBgBorderRadius: 6,
-          markerEnd: { type: 'arrowclosed' as const, color: superseded ? '#64748b' : edgeColors[edge.family], width: 14, height: 14 },
+          markerEnd: { type: 'arrowclosed' as const, color: superseded ? '#64748b' : edgeColors[edge.family], width: 15, height: 15 },
         }
       }),
-  [document.edges, hoveredEdgeId, neighborhood, nodeIds, selectedEdgeId, selectedNodeId, visibleEdgeFamilies])
+  [document.edges, hoveredEdgeId, hoveredNodeId, neighborhood, nodeIds, selectedEdgeId, selectedNodeId, visibleEdgeFamilies])
 
   const [nodes, setNodes, onNodesChange] = useNodesState<ConceptFlowNode>(derivedNodes)
   useEffect(() => setNodes((current) => reconcileNodes(current, derivedNodes)), [derivedNodes, setNodes])
 
+  const fitAll = useCallback(() => {
+    void instance?.fitView({ padding: 0.16, maxZoom: 0.92, minZoom: 0.18, duration: transitionDuration })
+  }, [instance, transitionDuration])
+
   useEffect(() => {
-    if (!instance || lastView.current === view.id) return
-    lastView.current = view.id
+    if (!instance) return
+    const key = `${view.id}:${derivedNodes.length}`
+    if (lastFitKey.current === key) return
+    lastFitKey.current = key
     const frame = window.requestAnimationFrame(() => {
-      void instance.fitView({ padding: 0.2, maxZoom: 1, minZoom: 0.22, duration: transitionDuration })
+      void instance.fitView({ padding: 0.16, maxZoom: 0.92, minZoom: 0.18, duration: transitionDuration })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [instance, transitionDuration, view.id])
+  }, [derivedNodes.length, instance, transitionDuration, view.id])
 
   useEffect(() => {
     if (!instance || !camera) return
-    const position = view.positions[camera.id]
+    const position = view.positions[camera.id] ?? derivedNodes.find((node) => node.id === camera.id)?.position
     if (!position) return
     const frame = window.requestAnimationFrame(() => {
       const selected = instance.getNode(camera.id)
@@ -257,10 +278,32 @@ export function TheoryCanvas({
       })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [camera, instance, transitionDuration, view.positions])
+  }, [camera, derivedNodes, instance, transitionDuration, view.positions])
+
+  useEffect(() => {
+    const isTyping = (target: EventTarget | null) =>
+      target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable)
+    const down = (event: KeyboardEvent) => {
+      if (event.code === 'Space' && !isTyping(event.target) && !event.repeat) {
+        event.preventDefault()
+        setSpacePan(true)
+      }
+      if (event.key === 'Escape') setMenu(null)
+    }
+    const up = (event: KeyboardEvent) => {
+      if (event.code === 'Space') setSpacePan(false)
+    }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+    }
+  }, [])
 
   const handleNodeClick = useCallback<NodeMouseHandler<ConceptFlowNode>>((event, node) => {
     event.stopPropagation()
+    setMenu(null)
     onSelectEdge(null)
     onSelectNode(node.id)
     hideHint()
@@ -268,13 +311,15 @@ export function TheoryCanvas({
 
   const handleNodeDoubleClick = useCallback<NodeMouseHandler<ConceptFlowNode>>((event, node) => {
     event.stopPropagation()
-    onInspectNode(node.id)
-  }, [onInspectNode])
+    setMenu(null)
+    inspect(node.id)
+  }, [inspect])
 
   const handlePaneDoubleClick = useCallback((event: React.MouseEvent) => {
     if (!instance) return
     if (event.target instanceof Element && event.target.closest('.react-flow__node, .react-flow__edge, button, input')) return
     hideHint()
+    setMenu(null)
     onCreateAt(instance.screenToFlowPosition({ x: event.clientX, y: event.clientY }))
   }, [hideHint, instance, onCreateAt])
 
@@ -294,15 +339,37 @@ export function TheoryCanvas({
     onCreateAt(flowPoint, state.fromNode.id)
   }, [hideHint, instance, onCreateAt])
 
+  const openMenu = useCallback((event: React.MouseEvent, nodeId?: string) => {
+    event.preventDefault()
+    event.stopPropagation()
+    hideHint()
+    const flow = instance?.screenToFlowPosition({ x: event.clientX, y: event.clientY })
+    setMenu({ x: event.clientX, y: event.clientY, nodeId, flow })
+    if (nodeId) {
+      onSelectEdge(null)
+      onSelectNode(nodeId)
+    }
+  }, [hideHint, instance, onSelectEdge, onSelectNode])
+
   const hoveredConcept = hoveredNodeId ? document.nodes.find((node) => node.id === hoveredNodeId) : undefined
   const selectedConcept = selectedNodeId ? document.nodes.find((node) => node.id === selectedNodeId) : undefined
-
-  const fitAll = useCallback(() => {
-    void instance?.fitView({ padding: 0.2, maxZoom: 1, duration: transitionDuration })
-  }, [instance, transitionDuration])
+  const panMode = !lasso || spacePan
 
   return (
-    <div className={`canvas-shell ${lasso ? 'is-lasso' : 'is-pan'}`} aria-label="Dream Unity theory canvas">
+    <div className={`canvas-shell ${panMode ? 'is-pan' : 'is-lasso'}${spacePan ? ' is-panning' : ''}`} aria-label="Dream Unity theory canvas">
+      <style>{`
+        .canvas-shell{background:radial-gradient(circle at 18% 12%, rgba(8,121,138,.08), transparent 28%),radial-gradient(circle at 82% 18%, rgba(98,80,168,.08), transparent 26%),radial-gradient(circle at 50% 88%, rgba(30,122,69,.07), transparent 30%),#f3f6fb}
+        .canvas-shell .react-flow__background circle{fill:#c5cedb !important}
+        .concept-node{width:228px;min-height:86px;padding:13px 14px 12px;border:1px solid color-mix(in srgb,var(--node-accent) 38%,#d5dde8);border-radius:14px;background:#fff;box-shadow:0 10px 24px rgba(23,32,51,.08)}
+        .concept-node.is-selected{border-width:2px;box-shadow:0 0 0 4px color-mix(in srgb,var(--node-accent) 18%,transparent)}
+        .concept-node.unity-node{width:248px;background:linear-gradient(180deg,#f7f4ff,#ffffff)}
+        .canvas-status{position:absolute;z-index:10;top:12px;right:12px;display:flex;gap:8px;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:#ffffffee;color:var(--muted);font-size:11px;font-weight:650;pointer-events:none}
+        .canvas-status span + span::before{content:"·";margin-right:8px;color:var(--faint)}
+        .canvas-context-menu{position:fixed;z-index:80;min-width:196px;padding:6px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 18px 44px rgba(23,32,51,.18)}
+        .canvas-context-menu button{display:block;width:100%;min-height:38px;padding:0 11px;border:0;border-radius:8px;background:transparent;color:var(--text);text-align:left;cursor:pointer;font-size:13px;font-weight:600}
+        .canvas-context-menu button:hover{background:var(--surface-2)}
+        .overview-count-badge{display:none !important}
+      `}</style>
       <ReactFlow<ConceptFlowNode>
         nodes={nodes}
         edges={derivedEdges}
@@ -310,12 +377,14 @@ export function TheoryCanvas({
         onNodesChange={onNodesChange}
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
-        onEdgeClick={(_event, edge) => { onSelectNode(null); onSelectEdge(edge.id) }}
+        onNodeContextMenu={(event, node) => openMenu(event, node.id)}
+        onPaneContextMenu={(event) => openMenu(event)}
+        onEdgeClick={(_event, edge) => { setMenu(null); onSelectNode(null); onSelectEdge(edge.id) }}
         onEdgeMouseEnter={(_event, edge) => setHoveredEdgeId(edge.id)}
         onEdgeMouseLeave={() => setHoveredEdgeId(null)}
         onNodeMouseEnter={(_event, node) => setHoveredNodeId(node.id)}
         onNodeMouseLeave={() => setHoveredNodeId(null)}
-        onPaneClick={() => { onSelectNode(null); onSelectEdge(null) }}
+        onPaneClick={() => { setMenu(null); onSelectNode(null); onSelectEdge(null) }}
         onDoubleClick={handlePaneDoubleClick}
         onNodeDragStart={hideHint}
         onNodeDragStop={(_event, node) => onMoveNode(node.id, node.position)}
@@ -324,12 +393,13 @@ export function TheoryCanvas({
         onSelectionChange={handleSelection}
         onInit={setInstance}
         onMoveStart={hideHint}
-        minZoom={0.16}
+        minZoom={0.14}
         maxZoom={1.9}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.72 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.62 }}
         connectionMode={ConnectionMode.Loose}
-        panOnDrag={!lasso}
-        selectionOnDrag={lasso}
+        connectionLineStyle={{ stroke: '#6250a8', strokeWidth: 2.4 }}
+        panOnDrag={panMode}
+        selectionOnDrag={!panMode}
         panOnScroll
         zoomOnPinch
         zoomOnDoubleClick={false}
@@ -343,29 +413,24 @@ export function TheoryCanvas({
         selectionKeyCode="Shift"
         nodesFocusable
         edgesFocusable
-        onlyRenderVisibleElements
         proOptions={{ hideAttribution: false }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="rgba(71, 85, 105, .16)" />
-        <Controls position="bottom-left" showInteractive={false} />
-        <MiniMap
-          className="theory-minimap"
-          pannable
-          zoomable
-          position="bottom-right"
-          nodeColor={(node) => minimapFill[(node.data as ConceptCardData).portal]}
-          maskColor="rgba(23,32,51,.08)"
-        />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1.15} color="rgba(71, 85, 105, .2)" />
+        <Controls position="bottom-left" showInteractive={false} onFitView={fitAll} />
+        <MiniMap className="theory-minimap" pannable zoomable position="bottom-right" nodeColor={(node) => minimapFill[(node.data as ConceptCardData).portal]} maskColor="rgba(23,32,51,.1)" />
       </ReactFlow>
-
+      <div className="canvas-status" aria-live="polite">
+        <span>{visibleConcepts.length} ideas</span>
+        <span>{derivedEdges.length} links</span>
+        <span>{panMode ? 'Drag to pan' : 'Lasso select'}</span>
+      </div>
       {hoveredConcept && hoveredConcept.id !== selectedNodeId && hoveredConcept.essence && (
         <div className="node-hover-card" role="tooltip">{hoveredConcept.essence}</div>
       )}
-
       {selectedConcept && (
         <div className="selection-hud" role="toolbar" aria-label="Selected idea">
           <span className="selection-hud-title">{selectedConcept.title}</span>
-          <button type="button" onClick={() => onInspectNode(selectedConcept.id)} title="Open editor (Enter)">
+          <button type="button" onClick={() => inspect(selectedConcept.id)} title="Open editor (Enter)">
             <PanelRightOpen size={15} /> Open
           </button>
           <button type="button" onClick={() => onCreateAt({
@@ -374,25 +439,45 @@ export function TheoryCanvas({
           }, selectedConcept.id)} title="Add a connected idea (Tab)">
             <Plus size={15} /> Related
           </button>
-          <button type="button" onClick={() => onSetLasso(!lasso)} title="Toggle lasso select">
-            <Link2 size={15} /> {lasso ? 'Pan' : 'Lasso'}
+          <button type="button" onClick={() => setLassoMode(!lasso)} title="Toggle lasso select">
+            <Link2 size={15} /> {lasso && !spacePan ? 'Pan' : 'Lasso'}
           </button>
           <button type="button" onClick={fitAll} title="Fit the whole map">
             <Maximize2 size={15} /> Fit
           </button>
         </div>
       )}
-
       <div className="canvas-tools" role="group" aria-label="Map tools">
-        <button type="button" className={!lasso ? 'active' : ''} onClick={() => onSetLasso(false)}>Pan</button>
-        <button type="button" className={lasso ? 'active' : ''} onClick={() => onSetLasso(true)}>Lasso</button>
-        <button type="button" onClick={fitAll}><Maximize2 size={14} /> Fit</button>
+        <button type="button" className={panMode ? 'active' : ''} onClick={() => setLassoMode(false)}>Pan</button>
+        <button type="button" className={!panMode ? 'active' : ''} onClick={() => setLassoMode(true)}>Lasso</button>
+        <button type="button" onClick={fitAll}><Maximize2 size={14} /> Fit all</button>
+        <button type="button" onClick={() => tighten()}><Sparkles size={14} /> Tighten</button>
         {focusDepth > 0 && <span className="canvas-tools-note"><Eye size={13} /> Neighbour focus</span>}
       </div>
-
       {hintVisible && (
         <div className="canvas-hint">
-          Drag empty space to pan · Double-click to add · Drag a dot to connect · Shift-drag to lasso
+          Drag empty space to pan · Double-click or right-click to add · Drag a dot onto the page to connect
+        </div>
+      )}
+      {menu && (
+        <div className="canvas-context-menu" style={{ left: Math.min(menu.x, window.innerWidth - 220), top: Math.min(menu.y, window.innerHeight - 220) }} role="menu">
+          {menu.nodeId ? (
+            <>
+              <button type="button" onClick={() => { inspect(menu.nodeId!); setMenu(null) }}>Open idea</button>
+              <button type="button" onClick={() => { onRenameNode?.(menu.nodeId!); setMenu(null) }}>Rename</button>
+              <button type="button" onClick={() => {
+                const origin = view.positions[menu.nodeId!] ?? { x: 0, y: 0 }
+                onCreateAt({ x: origin.x + 280, y: origin.y }, menu.nodeId)
+                setMenu(null)
+              }}>Add related idea</button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => { if (menu.flow) onCreateAt(menu.flow); setMenu(null) }}>Add idea here</button>
+              <button type="button" onClick={() => { fitAll(); setMenu(null) }}>Fit whole map</button>
+              <button type="button" onClick={() => { tighten(); setMenu(null) }}>Tighten layout</button>
+            </>
+          )}
         </div>
       )}
     </div>
