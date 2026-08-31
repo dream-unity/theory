@@ -4,11 +4,12 @@ import { FilingRail } from './components/FilingRail'
 import { Inspector } from './components/Inspector'
 import { Dossier } from './components/Dossier'
 import { AtlasCanvas } from './components/AtlasCanvas'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { addConcept, addRelation, fileConcept, tagCounts, updateConcept, visibleConcepts, moveConcept } from './lib/document'
-import { loadDocument, resetDocument, saveDocument } from './lib/store'
+import { loadDocument, resetDocument, saveDocument, seedDocument } from './lib/store'
 
 export default function App() {
-  const [doc, setDoc] = useState<AtlasDocument | null>(null)
+  const [doc, setDoc] = useState<AtlasDocument>(() => seedDocument())
   const [view, setView] = useState<AtlasView>('whole-theory')
   const [selectedId, setSelectedId] = useState<string | null>('unity-core')
   const [editing, setEditing] = useState(true)
@@ -16,15 +17,20 @@ export default function App() {
   const [spaceHelp, setSpaceHelp] = useState(true)
 
   useEffect(() => {
-    void loadDocument().then((loaded) => {
-      setDoc(loaded)
-      const preferred = loaded.concepts.find((concept) => concept.id === 'unity-core') ?? loaded.concepts[0]
-      setSelectedId(preferred?.id ?? null)
-    })
+    void loadDocument()
+      .then((loaded) => {
+        setDoc(loaded)
+        const preferred = loaded.concepts.find((concept) => concept.id === 'unity-core') ?? loaded.concepts[0]
+        setSelectedId(preferred?.id ?? null)
+      })
+      .catch(() => {
+        const seed = seedDocument()
+        setDoc(seed)
+        setSelectedId('unity-core')
+      })
   }, [])
 
   useEffect(() => {
-    if (!doc) return
     const handle = window.setTimeout(() => {
       void saveDocument(doc)
     }, 240)
@@ -33,17 +39,15 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === '?' ) setSpaceHelp((value) => !value)
+      if (event.key === '?') setSpaceHelp((value) => !value)
       if (event.key === 'Escape') {
         setDossierOpen(false)
         setSelectedId(null)
       }
-      if ((event.key === 'Enter' || event.key === ' ') && selectedId && !isTyping(event)) {
-        if (event.key === 'Enter') setDossierOpen(true)
-      }
+      if (event.key === 'Enter' && selectedId && !isTyping(event)) setDossierOpen(true)
       if (event.key === 'n' && !isTyping(event)) {
         event.preventDefault()
-        setDoc((current) => (current ? addConcept(current, view, { title: 'Untitled card' }) : current))
+        setDoc((current) => addConcept(current, view, { title: 'Untitled card' }))
       }
     }
     window.addEventListener('keydown', onKey)
@@ -51,25 +55,17 @@ export default function App() {
   }, [selectedId, view])
 
   const selected = useMemo(
-    () => doc?.concepts.find((concept) => concept.id === selectedId) ?? null,
+    () => doc.concepts.find((concept) => concept.id === selectedId) ?? null,
     [doc, selectedId],
   )
 
   const patchSelected = useCallback(
     (patch: Partial<Concept>) => {
       if (!selectedId) return
-      setDoc((current) => (current ? updateConcept(current, selectedId, patch) : current))
+      setDoc((current) => updateConcept(current, selectedId, patch))
     },
     [selectedId],
   )
-
-  if (!doc) {
-    return (
-      <div className="boot">
-        <p>Opening the atlas…</p>
-      </div>
-    )
-  }
 
   const titles = Object.fromEntries(doc.concepts.map((concept) => [concept.id, concept.title]))
   const inboxCount = visibleConcepts(doc, 'inbox').length
@@ -106,44 +102,41 @@ export default function App() {
               <input type="checkbox" checked={editing} onChange={(event) => setEditing(event.target.checked)} />
               In-node notes
             </label>
-            <button
-              type="button"
-              onClick={() => setDoc((current) => (current ? addConcept(current, view, { title: 'Untitled card' }) : current))}
-            >
+            <button type="button" onClick={() => setDoc((current) => addConcept(current, view, { title: 'Untitled card' }))}>
               + Card
             </button>
             {selected ? (
-              <button type="button" onClick={() => setDoc((current) => (current ? fileConcept(current, selected.id, view) : current))}>
+              <button type="button" onClick={() => setDoc((current) => fileConcept(current, selected.id, view))}>
                 File here
               </button>
             ) : null}
           </div>
         </header>
 
-        <AtlasCanvas
-          doc={doc}
-          view={view}
-          selectedId={selectedId}
-          editing={editing}
-          onSelect={setSelectedId}
-          onMove={(id, x, y) => setDoc((current) => (current ? moveConcept(current, id, x, y) : current))}
-          onConnectNodes={(from, to) => setDoc((current) => (current ? addRelation(current, from, to) : current))}
-          onAddAt={(x, y) =>
-            setDoc((current) => (current ? addConcept(current, view, { title: 'Untitled card', x, y }) : current))
-          }
-          onChangeNotes={(id, notes) =>
-            setDoc((current) => (current ? updateConcept(current, id, { notes, essence: notes.split('\n')[0] ?? '' }) : current))
-          }
-          onChangeTitle={(id, title) => setDoc((current) => (current ? updateConcept(current, id, { title }) : current))}
-          onOpenDossier={(id) => {
-            setSelectedId(id)
-            setDossierOpen(true)
-          }}
-        />
+        <ErrorBoundary fallbackTitle="Canvas failed to draw">
+          <AtlasCanvas
+            doc={doc}
+            view={view}
+            selectedId={selectedId}
+            editing={editing}
+            onSelect={setSelectedId}
+            onMove={(id, x, y) => setDoc((current) => moveConcept(current, id, x, y))}
+            onConnectNodes={(from, to) => setDoc((current) => addRelation(current, from, to))}
+            onAddAt={(x, y) => setDoc((current) => addConcept(current, view, { title: 'Untitled card', x, y }))}
+            onChangeNotes={(id, notes) =>
+              setDoc((current) => updateConcept(current, id, { notes, essence: notes.split('\n')[0] ?? '' }))
+            }
+            onChangeTitle={(id, title) => setDoc((current) => updateConcept(current, id, { title }))}
+            onOpenDossier={(id) => {
+              setSelectedId(id)
+              setDossierOpen(true)
+            }}
+          />
+        </ErrorBoundary>
         {spaceHelp ? (
           <p className="hint-bar">
-            Drag the desk to pan · drag a card to place it · drag a port to connect with a verb · double-click the desk to add ·
-            double-click a card for the dossier · notes type inside the card.
+            Drag the desk to pan · drag a card to place it · drag a port to connect · double-click the desk to add ·
+            double-click a card for the dossier.
           </p>
         ) : null}
       </main>

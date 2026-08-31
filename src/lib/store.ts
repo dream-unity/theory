@@ -4,20 +4,34 @@ import { cloneSeed } from './document'
 
 const KEY = 'dream-unity-atlas-v2'
 
+export function seedDocument(): AtlasDocument {
+  return cloneSeed()
+}
+
 export async function loadDocument(): Promise<AtlasDocument> {
   try {
     const stored = await get<AtlasDocument>(KEY)
-    if (stored && stored.schemaVersion === 2 && Array.isArray(stored.concepts)) return stored
+    if (stored && stored.schemaVersion === 2 && Array.isArray(stored.concepts) && stored.concepts.length > 0) {
+      return stored
+    }
   } catch {
-    /* fall through to seed */
+    /* use seed */
   }
   const seed = cloneSeed()
-  await saveDocument(seed)
+  try {
+    await saveDocument(seed)
+  } catch {
+    /* private mode / blocked IDB must not block first paint */
+  }
   return seed
 }
 
 export async function saveDocument(doc: AtlasDocument): Promise<void> {
-  await set(KEY, doc)
+  try {
+    await set(KEY, doc)
+  } catch {
+    /* ignore quota / private-mode failures */
+  }
 }
 
 export async function resetDocument(): Promise<AtlasDocument> {
