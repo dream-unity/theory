@@ -1,21 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Connection } from '@xyflow/react'
 import { CircleHelp, GitMerge, Github, RotateCcw, Sparkles } from 'lucide-react'
 import { Header } from './components/Header'
-import { Inspector } from './components/Inspector'
-import {
-  CommandPalette,
-  ConflictDialog,
-  ForgeDialog,
-  GithubDialog,
-  NewSeedDialog,
-  RealiseDialog,
-  RelationDialog,
-  WelcomeDialog,
-  type ForgePayload,
-  type RealisePayload,
-} from './components/Modals'
-import { OutlinePanel } from './components/OutlinePanel'
+import type { ForgePayload, RealisePayload } from './components/Modals'
 import { TheoryCanvas } from './components/TheoryCanvas'
 import { useAutosave } from './hooks/useAutosave'
 import { completeGithubOAuth, connectWithToken, loadRuntimeConfig } from './lib/github'
@@ -36,6 +23,17 @@ import {
 } from './lib/theory'
 import { SEED_DOCUMENT } from './seed'
 import type { GithubSession, Portal, RuntimeConfig, TheoryDocument, TheoryEdge, TheoryNode, TheoryNodeType } from './types'
+
+const CommandPalette = lazy(() => import('./components/Modals').then((module) => ({ default: module.CommandPalette })))
+const ConflictDialog = lazy(() => import('./components/Modals').then((module) => ({ default: module.ConflictDialog })))
+const ForgeDialog = lazy(() => import('./components/Modals').then((module) => ({ default: module.ForgeDialog })))
+const GithubDialog = lazy(() => import('./components/Modals').then((module) => ({ default: module.GithubDialog })))
+const NewSeedDialog = lazy(() => import('./components/Modals').then((module) => ({ default: module.NewSeedDialog })))
+const RealiseDialog = lazy(() => import('./components/Modals').then((module) => ({ default: module.RealiseDialog })))
+const RelationDialog = lazy(() => import('./components/Modals').then((module) => ({ default: module.RelationDialog })))
+const WelcomeDialog = lazy(() => import('./components/Modals').then((module) => ({ default: module.WelcomeDialog })))
+const Inspector = lazy(() => import('./components/Inspector').then((module) => ({ default: module.Inspector })))
+const OutlinePanel = lazy(() => import('./components/OutlinePanel').then((module) => ({ default: module.OutlinePanel })))
 
 type ModalName = 'seed' | 'github' | 'forge' | 'realise' | 'commands' | 'welcome' | null
 
@@ -454,7 +452,9 @@ export default function App() {
         onHome={() => selectNode(view.rootNodeId ?? 'unity-core')}
       />
       <main className="workspace">
-        {leftOpen && <OutlinePanel document={document} currentView={view} selectedNodeId={selectedNodeId} onSelectNode={selectNode} onSelectView={(id) => { setViewId(id); selectNode(null) }} visiblePortals={visiblePortals} onTogglePortal={togglePortal} visibleEdgeFamilies={visibleEdgeFamilies} onToggleEdgeFamily={toggleEdgeFamily} onRequestClose={() => { if (window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false) }} />}
+        <Suspense fallback={leftOpen ? <aside className="outline-panel panel-loading" role="status">Opening ideas…</aside> : null}>
+          {leftOpen && <OutlinePanel document={document} currentView={view} selectedNodeId={selectedNodeId} onSelectNode={selectNode} onSelectView={(id) => { setViewId(id); selectNode(null) }} visiblePortals={visiblePortals} onTogglePortal={togglePortal} visibleEdgeFamilies={visibleEdgeFamilies} onToggleEdgeFamily={toggleEdgeFamily} onRequestClose={() => { if (window.matchMedia('(max-width: 979px)').matches) setLeftOpen(false) }} />}
+        </Suspense>
         <TheoryCanvas
           document={document}
           view={view}
@@ -470,17 +470,21 @@ export default function App() {
           onCreateAt={openSeed}
           onConnect={connect}
         />
-        {rightOpen && (selectedNode || selectedEdge) && <Inspector document={document} node={selectedNode} edge={selectedEdge} requestedTab={inspectorTab} onChangeNode={updateNode} onChangeEdge={updateEdge} onDeleteEdge={(id) => { mutate((current) => deleteEdge(current, id)); selectEdge(null) }} onSelectNode={selectNode} onClose={() => setRightOpen(false)} onArchive={(id) => mutate((current) => archiveNode(current, id, actor))} onRealise={(id) => { setRealiseNodeId(id); setModal('realise') }} onBeginRelation={(from, to) => setPendingConnection({ from, to })} />}
+        <Suspense fallback={rightOpen ? <aside className="inspector panel-loading" role="status">Opening editor…</aside> : null}>
+          {rightOpen && (selectedNode || selectedEdge) && <Inspector document={document} node={selectedNode} edge={selectedEdge} requestedTab={inspectorTab} onChangeNode={updateNode} onChangeEdge={updateEdge} onDeleteEdge={(id) => { mutate((current) => deleteEdge(current, id)); selectEdge(null) }} onSelectNode={selectNode} onClose={() => setRightOpen(false)} onArchive={(id) => mutate((current) => archiveNode(current, id, actor))} onRealise={(id) => { setRealiseNodeId(id); setModal('realise') }} onBeginRelation={(from, to) => setPendingConnection({ from, to })} />}
+        </Suspense>
       </main>
 
-      {modal === 'welcome' && <WelcomeDialog onClose={closeWelcome} />}
-      {modal === 'seed' && <NewSeedDialog selectedNode={selectedNode} onClose={() => setModal(null)} onCreate={createSeed} />}
-      {modal === 'github' && <GithubDialog config={config} session={session} onClose={() => setModal(null)} onConnected={handleConnectSession} onDisconnect={disconnect} />}
-      {modal === 'forge' && forgeNodes.length >= 2 && <ForgeDialog nodes={forgeNodes} onClose={() => setModal(null)} onCreate={forge} />}
-      {modal === 'realise' && realiseNode && <RealiseDialog node={realiseNode} onClose={() => { setModal(null); setRealiseNodeId(null) }} onCreate={realise} />}
-      {modal === 'commands' && <CommandPalette document={document} onClose={() => setModal(null)} onSelectNode={selectNode} commands={commands} />}
-      {pendingConnection && relationSource && relationTarget && <RelationDialog source={relationSource} target={relationTarget} onClose={() => setPendingConnection(null)} onCreate={createRelation} />}
-      {conflict && <ConflictDialog local={document} remote={conflict.remote} conflictingPaths={conflict.conflictingPaths} onClose={() => undefined} onResolve={(choice) => void resolveConflict(choice)} />}
+      <Suspense fallback={<div className="modal-backdrop"><div className="modal-loading" role="status">Opening tool…</div></div>}>
+        {modal === 'welcome' && <WelcomeDialog onClose={closeWelcome} />}
+        {modal === 'seed' && <NewSeedDialog selectedNode={selectedNode} onClose={() => setModal(null)} onCreate={createSeed} />}
+        {modal === 'github' && <GithubDialog config={config} session={session} onClose={() => setModal(null)} onConnected={handleConnectSession} onDisconnect={disconnect} />}
+        {modal === 'forge' && forgeNodes.length >= 2 && <ForgeDialog nodes={forgeNodes} onClose={() => setModal(null)} onCreate={forge} />}
+        {modal === 'realise' && realiseNode && <RealiseDialog node={realiseNode} onClose={() => { setModal(null); setRealiseNodeId(null) }} onCreate={realise} />}
+        {modal === 'commands' && <CommandPalette document={document} onClose={() => setModal(null)} onSelectNode={selectNode} commands={commands} />}
+        {pendingConnection && relationSource && relationTarget && <RelationDialog source={relationSource} target={relationTarget} onClose={() => setPendingConnection(null)} onCreate={createRelation} />}
+        {conflict && <ConflictDialog local={document} remote={conflict.remote} conflictingPaths={conflict.conflictingPaths} onClose={() => undefined} onResolve={(choice) => void resolveConflict(choice)} />}
+      </Suspense>
     </div>
   )
 }
