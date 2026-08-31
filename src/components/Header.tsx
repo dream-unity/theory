@@ -106,6 +106,8 @@ export function Header({
   const syncTitle = syncState.kind === 'synced'
     ? `${syncState.label} at ${new Date(syncState.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
     : syncState.label
+  const syncLabel = session ? syncShortLabels[syncState.kind] : 'Connect GitHub'
+  const syncButtonTitle = session ? syncTitle : 'Connect GitHub for automatic repository checkpoints'
 
   const requestPanel = (panel: 'left' | 'right' | 'none') => {
     if (onRequestPanel) onRequestPanel(panel)
@@ -139,8 +141,8 @@ export function Header({
           {selectedCount >= 2 && <button type="button" className="forge-header-button" onClick={onForge} aria-label={`Combine ${selectedCount} selected ideas`}><GitMerge size={16} /><span>Combine {selectedCount}</span></button>}
           <button type="button" className="command-button" onClick={onCommand} aria-label="Find ideas and actions"><Search size={17} /><span>Find</span><kbd>/</kbd></button>
           <button type="button" className="new-idea-header-button" onClick={onNewIdea}><Plus size={18} /><span>New idea</span></button>
-          <button type="button" className={`sync-button sync-${syncState.kind}`} onClick={session ? onCheckpoint : onConnect} title={syncTitle}>
-            <SyncIcon state={syncState} /><span>{syncShortLabels[syncState.kind]}</span>
+          <button type="button" className={`sync-button sync-${syncState.kind}`} onClick={session ? onCheckpoint : onConnect} title={syncButtonTitle}>
+            {session ? <SyncIcon state={syncState} /> : <Github size={16} />}<span>{syncLabel}</span>
           </button>
           <details className="utility-menu" ref={overflowRef}>
             <summary className="icon-button" aria-label="More tools"><MoreHorizontal size={19} /></summary>
@@ -183,8 +185,8 @@ export function Header({
         <button type="button" className="mobile-recovery-action" onClick={onHome}>
           <Home size={20} /><span>Home</span>
         </button>
-        <button type="button" className={`mobile-recovery-action mobile-sync sync-${syncState.kind}`} onClick={session ? onCheckpoint : onConnect} aria-label={`Save status: ${syncTitle}`}>
-          <SyncIcon state={syncState} /><span>{syncShortLabels[syncState.kind]}</span>
+        <button type="button" className={`mobile-recovery-action mobile-sync sync-${syncState.kind}`} onClick={session ? onCheckpoint : onConnect} aria-label={session ? `Save status: ${syncTitle}` : syncButtonTitle}>
+          {session ? <SyncIcon state={syncState} /> : <Github size={17} />}<span>{session ? syncLabel : 'Connect'}</span>
         </button>
       </nav>
     </>
