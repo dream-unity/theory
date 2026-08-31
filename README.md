@@ -1,72 +1,59 @@
-# Dream Unity — Theory Observatory
+# Dream Unity — Theory Atlas
 
-A living, editable knowledge atlas for Dream Unity. It combines a stable spatial concept map with a structured theory spine, question-driven focus views, sentence-like relationships, epistemic metadata, and Dream Unity-native reasoning operations.
+A 2.5D knowledge atlas for Dream Unity. Four coloured quadrants surround **Unity Core**. Every card keeps its note, verb-labelled relations, maturity ring, and filing path visible. Nothing is hidden by semantic zoom.
 
-## What is implemented
+## What you are looking at
 
-- Stable 2D semantic canvas with pan-by-default, pinch zoom, optional lasso, minimap, touch, and keyboard support
-- Every idea stays on the map at every zoom — no disappearing landmarks
-- Click selects without stealing the camera; double-click or Enter opens the dossier
-- Drag a handle onto empty space (or press Tab) to grow a related idea in place
-- Canonical typed concepts shown through multiple views without duplicating their content
-- Explicit directional relationship verbs, rationale, status, and family
-- Searchable outline/spine as an equal representation of the graph
-- Editable essence, Markdown dossier, maturity, stance, confidence, portals, phases, topics, sources, and Mirror fields
-- `Unity Forge`: combines selected forms while retaining provenance, differences, tensions, consequences, and omissions
-- `Reality Bridge`: converts theory into a practice/experiment with expected and observed outcomes
-- `Return to Ether`: reversible archival rather than destructive deletion
-- Immediate IndexedDB persistence, offline-safe local edits, undo/redo, JSON import/export
-- Serialized, debounced GitHub checkpoints with SHA conflict detection and an explicit review flow
-- Five focus maps and an explicitly `ai-proposed` starting ontology for author review
-- Responsive mobile drawers, 44px-class primary touch controls, reduced-motion and increased-contrast support
+The working surface matches the atlas desk:
 
-## Run locally
+- **Maker / Machine / World / Unity** quadrants, always on
+- **Unity Core** in the centre, with in-card notes and a blinking caret
+- **Atlas Filing Rail** — Inbox, Whole Theory, Mirror & Freedom, Three Forms, Realisation Lab
+- **Inspector** — full note, maturity, sources, file-under, tags
+- **Dossier** — facet chips, long notes, and drawers for Essence / Relations / Grounding / Mirror / Practice
+- Verb edges: *enables, shapes, grounds, synthesises into, realises as, attunes, integrates*
+
+Cards stay on the map at every zoom. Positions persist. Double-click a card to open its dossier. Type inside the card.
+
+## Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-Production verification:
-
 ```bash
 npm test
 npm run build
-npm run preview
 ```
 
-Before committing a release, refresh the branch-compatible GitHub Pages files:
+GitHub Pages builds from `main` via `.github/workflows/deploy-pages.yml` and publishes `/theory/`.
 
-```bash
-npm run pages:prepare
-```
+## Use
 
-The editable Vite source entry is `app.html`. The generated root `index.html`,
-`assets/`, `data/`, and `runtime-config.json` mirror the production build so the
-site remains valid whether GitHub Pages is configured for Actions artifacts or
-for the `main` branch root.
-
-## Keyboard
-
-| Key | Action |
+| Action | How |
 |---|---|
-| Drag empty space | Pan the map |
-| Shift-drag | Lasso-select several ideas |
-| Double-click empty space | Add an idea in place and name it |
-| Drag a connection dot onto empty space | Grow a related idea |
-| Double-click an idea | Open the editor |
-| `Enter` | Open the selected idea |
-| `Tab` | Add a related idea beside the selection |
-| `F2` | Rename in place |
-| Arrow keys | Jump to the nearest idea in that direction |
-| `Ctrl/Cmd + K` or `/` | Search and commands |
-| `N` | Capture a seed with type and link options |
-| `F` | Cycle all / one-hop / two-hop focus |
-| `Home` | Return to the Unity Core |
-| `Esc` | Close the editor, then deselect |
-| `Ctrl/Cmd + Z` | Undo |
-| `?` | Orientation guide |
+| Pan | Drag the desk |
+| Move a card | Drag the card |
+| Connect | Drag a port onto another card |
+| Add | Double-click the desk, right-click, or `N` |
+| Edit notes | Toggle **In-node notes** and type in the card |
+| Dossier | Double-click a card or press Enter |
+| File | Choose a rail view, then **File here** |
+| Restore seed | Filing rail footer |
 
-## Research basis
+Edits autosave to IndexedDB. **Restore seeded atlas** returns the canonical Whole Theory map.
 
-The implementation rationale and primary research links are recorded in [docs/DESIGN-RATIONALE.md](docs/DESIGN-RATIONALE.md).
+## Filing method
+
+Each concept carries:
+
+- **Kind** — core, facet, form, field, principle, practice, tension
+- **Portal / form / phase / stance / maturity**
+- **Notes** typed in the card
+- **Sources**
+- **Mirror** — identity, intention, paradox, inversion risk, falsifier, restoring action
+- **Practice** — methods, experiments, habits
+- **Views** — which filing rail the card belongs on
+
+The same concept can sit in more than one view without being copied.
