@@ -80,6 +80,13 @@ export function AtlasCanvas(props: {
 
   const [menu, setMenu] = useState<{ x: number; y: number; flowX: number; flowY: number } | null>(null)
 
+  function placeFromEvent(event: { clientX: number; clientY: number; currentTarget: EventTarget | null; target: EventTarget | null }) {
+    const host = ((event.currentTarget as HTMLElement | null) ?? (event.target as HTMLElement | null))?.closest('.atlas-canvas')
+    const bounds = host?.getBoundingClientRect()
+    if (!bounds) return
+    onAddAt(event.clientX - bounds.left - 114, event.clientY - bounds.top - 80)
+  }
+
   return (
     <div className="atlas-canvas">
       <div className="quadrant-stage" aria-hidden="true">
@@ -104,11 +111,7 @@ export function AtlasCanvas(props: {
         onConnect={onConnect}
         onPaneClick={() => { setMenu(null); onSelect(null) }}
         onNodeClick={(_, node) => onSelect(node.id)}
-        onPaneDoubleClick={(event) => {
-          const bounds = (event.target as HTMLElement).closest('.atlas-canvas')?.getBoundingClientRect()
-          if (!bounds) return
-          onAddAt(event.clientX - bounds.left - 114, event.clientY - bounds.top - 80)
-        }}
+        onDoubleClick={(event) => placeFromEvent(event)}
         onPaneContextMenu={(event) => {
           event.preventDefault()
           const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
