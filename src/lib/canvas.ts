@@ -71,3 +71,69 @@ export function tightenPositions(
   }
   return next
 }
+
+export function mapBounds(positions: Record<string, Point>) {
+  const points = Object.values(positions)
+  if (points.length === 0) return { width: 0, height: 0, minX: 0, minY: 0, maxX: 0, maxY: 0 }
+  const xs = points.map((point) => point.x)
+  const ys = points.map((point) => point.y)
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+  return { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY }
+}
+
+export function medianNearestGap(positions: Record<string, Point>) {
+  const points = Object.values(positions)
+  if (points.length < 2) return 0
+  const gaps = points.map((point, index) => {
+    let nearest = Number.POSITIVE_INFINITY
+    for (let other = 0; other < points.length; other += 1) {
+      if (other === index) continue
+      nearest = Math.min(nearest, Math.hypot(point.x - points[other].x, point.y - points[other].y))
+    }
+    return nearest
+  })
+  gaps.sort((left, right) => left - right)
+  return gaps[Math.floor(gaps.length / 2)]
+}
+
+export function separateOverlaps(positions: Record<string, Point>, minGap = 248): Record<string, Point> {
+  const next: Record<string, Point> = {}
+  for (const [id, point] of Object.entries(positions)) next[id] = { x: point.x, y: point.y }
+  const ids = Object.keys(next)
+  for (let pass = 0; pass < 14; pass += 1) {
+    let moved = false
+    for (let i = 0; i < ids.length; i += 1) {
+      for (let j = i + 1; j < ids.length; j += 1) {
+        const left = next[ids[i]]
+        const right = next[ids[j]]
+        const dx = right.x - left.x
+        const dy = right.y - left.y
+        const distance = Math.hypot(dx, dy) || 0.01
+        if (distance >= minGap) continue
+        const push = (minGap - distance) / 2
+        const ux = dx / distance
+        const uy = dy / distance
+        left.x -= ux * push
+        left.y -= uy * push
+        right.x += ux * push
+        right.y += uy * push
+        moved = true
+      }
+    }
+    if (!moved) break
+  }
+  return next
+}
+
+/** Compact a sparse constellation while keeping relative neighbourhoods. */
+export function packMap(positions: Record<string, Point>, targetGap = 268): Record<string, Point> {
+  if (Object.keys(positions).length < 2) return positions
+  const gap = medianNearestGap(positions)
+  const bounds = mapBounds(positions)
+  const tooWide = bounds.width > 1680 || bounds.height > 1280 || gap > targetGap * 1.28
+  const scaled = tooWide ? tightenPositions(positions, Math.min(0.72, targetGap / Math.max(gap, 1))) : positions
+  return separateOverlaps(scaled, Math.round(targetGap * 0.88))
+}

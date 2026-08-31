@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { neighborInDirection, spawnBeside, tightenPositions } from './canvas'
+import { neighborInDirection, packMap, spawnBeside, tightenPositions } from './canvas'
 
 describe('canvas spatial helpers', () => {
   it('walks to the neighbour in a compass direction', () => {
@@ -31,5 +31,17 @@ describe('canvas spatial helpers', () => {
     expect(next.a.x).toBeGreaterThan(0)
     expect(next.b.x).toBeLessThan(1000)
     expect(next.b.x - next.a.x).toBe(500)
+  })
+
+  it('packs a sprawling map into a tighter neighbourhood', () => {
+    const packed = packMap({
+      a: { x: 0, y: 0 },
+      b: { x: 1400, y: 0 },
+      c: { x: 0, y: 1200 },
+    })
+    const width = Math.max(packed.a.x, packed.b.x, packed.c.x) - Math.min(packed.a.x, packed.b.x, packed.c.x)
+    const height = Math.max(packed.a.y, packed.b.y, packed.c.y) - Math.min(packed.a.y, packed.b.y, packed.c.y)
+    expect(width).toBeLessThan(1400)
+    expect(height).toBeLessThan(1200)
   })
 })
