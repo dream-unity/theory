@@ -87,6 +87,8 @@ export interface CameraRequest {
   nonce: number
 }
 
+type MenuEvent = { preventDefault(): void; stopPropagation(): void; clientX: number; clientY: number }
+
 interface TheoryCanvasProps {
   document: TheoryDocument
   view: TheoryView
@@ -339,7 +341,7 @@ export function TheoryCanvas({
     onCreateAt(flowPoint, state.fromNode.id)
   }, [hideHint, instance, onCreateAt])
 
-  const openMenu = useCallback((event: React.MouseEvent, nodeId?: string) => {
+  const openMenu = useCallback((event: MenuEvent, nodeId?: string) => {
     event.preventDefault()
     event.stopPropagation()
     hideHint()
