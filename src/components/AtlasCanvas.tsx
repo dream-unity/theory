@@ -38,31 +38,39 @@ export function AtlasCanvas(props: {
   const concepts = visibleConcepts(doc, view)
   const relations = visibleRelations(doc, view)
 
-  const builtNodes = useMemo<ConceptFlowNode[]>(() => concepts.map((concept) => ({
-    id: concept.id,
-    type: 'concept',
-    position: doc.positions[concept.id] ?? { x: 0, y: 0 },
-    data: { concept, selected: concept.id === selectedId, editing, onChangeNotes, onChangeTitle, onOpenDossier },
-    style: { width: concept.kind === 'core' ? 320 : 228 },
-    zIndex: concept.kind === 'core' ? 8 : 1,
-  })), [concepts, doc.positions, selectedId, editing, onChangeNotes, onChangeTitle, onOpenDossier])
+  const builtNodes = useMemo<ConceptFlowNode[]>(
+    () =>
+      concepts.map((concept) => ({
+        id: concept.id,
+        type: 'concept',
+        position: doc.positions[concept.id] ?? { x: 40, y: 40 },
+        data: { concept, selected: concept.id === selectedId, editing, onChangeNotes, onChangeTitle, onOpenDossier },
+        style: { width: concept.kind === 'core' ? 320 : 228 },
+        zIndex: concept.kind === 'core' ? 8 : 1,
+      })),
+    [concepts, doc.positions, selectedId, editing, onChangeNotes, onChangeTitle, onOpenDossier],
+  )
 
-  const builtEdges = useMemo<Edge[]>(() => relations.map((relation) => {
-    const from = doc.concepts.find((concept) => concept.id === relation.from)
-    const accent = QUADRANT_META[(from?.quadrant ?? 'unity') as Quadrant].accent
-    return {
-      id: relation.id,
-      source: relation.from,
-      target: relation.to,
-      label: relation.verb,
-      markerEnd: { type: MarkerType.ArrowClosed, color: accent, width: 16, height: 16 },
-      style: { stroke: accent, strokeWidth: 1.7 },
-      labelStyle: { fill: '#d7e4ef', fontSize: 11, fontWeight: 600 },
-      labelBgStyle: { fill: 'rgba(8, 14, 24, 0.86)' },
-      labelBgPadding: [6, 4] as [number, number],
-      labelBgBorderRadius: 8,
-    }
-  }), [relations, doc.concepts])
+  const builtEdges = useMemo<Edge[]>(
+    () =>
+      relations.map((relation) => {
+        const from = doc.concepts.find((concept) => concept.id === relation.from)
+        const accent = QUADRANT_META[(from?.quadrant ?? 'unity') as Quadrant].accent
+        return {
+          id: relation.id,
+          source: relation.from,
+          target: relation.to,
+          label: relation.verb,
+          markerEnd: { type: MarkerType.ArrowClosed, color: accent, width: 16, height: 16 },
+          style: { stroke: accent, strokeWidth: 1.7 },
+          labelStyle: { fill: '#d7e4ef', fontSize: 11, fontWeight: 600 },
+          labelBgStyle: { fill: 'rgba(8, 14, 24, 0.86)' },
+          labelBgPadding: [6, 4] as [number, number],
+          labelBgBorderRadius: 8,
+        }
+      }),
+    [relations, doc.concepts],
+  )
 
   const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(builtEdges)
@@ -72,20 +80,16 @@ export function AtlasCanvas(props: {
     setEdges(builtEdges)
   }, [builtNodes, builtEdges, setNodes, setEdges])
 
-  const onConnect = useCallback<OnConnect>((connection: Connection) => {
-    if (!connection.source || !connection.target) return
-    setEdges((current) => addEdge({ ...connection, label: 'relates to' }, current))
-    onConnectNodes(connection.source, connection.target)
-  }, [onConnectNodes, setEdges])
+  const onConnect = useCallback<OnConnect>(
+    (connection: Connection) => {
+      if (!connection.source || !connection.target) return
+      setEdges((current) => addEdge({ ...connection, label: 'relates to' }, current))
+      onConnectNodes(connection.source, connection.target)
+    },
+    [onConnectNodes, setEdges],
+  )
 
   const [menu, setMenu] = useState<{ x: number; y: number; flowX: number; flowY: number } | null>(null)
-
-  function placeFromEvent(event: { clientX: number; clientY: number; currentTarget: EventTarget | null; target: EventTarget | null }) {
-    const host = ((event.currentTarget as HTMLElement | null) ?? (event.target as HTMLElement | null))?.closest('.atlas-canvas')
-    const bounds = host?.getBoundingClientRect()
-    if (!bounds) return
-    onAddAt(event.clientX - bounds.left - 114, event.clientY - bounds.top - 80)
-  }
 
   return (
     <div className="atlas-canvas">
@@ -109,9 +113,11 @@ export function AtlasCanvas(props: {
         }}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onPaneClick={() => { setMenu(null); onSelect(null) }}
+        onPaneClick={() => {
+          setMenu(null)
+          onSelect(null)
+        }}
         onNodeClick={(_, node) => onSelect(node.id)}
-        onDoubleClick={(event) => placeFromEvent(event)}
         onPaneContextMenu={(event) => {
           event.preventDefault()
           const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
@@ -123,24 +129,44 @@ export function AtlasCanvas(props: {
           })
         }}
         fitView
-        minZoom={0.35}
+        minZoom={0.25}
         maxZoom={1.8}
         panOnScroll
         panOnDrag
+        nodesDraggable
+        elementsSelectable
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{ type: 'smoothstep' }}
+        style={{ width: '100%', height: '100%' }}
       >
         <Background id="dots" variant={BackgroundVariant.Dots} gap={28} size={1.2} color="rgba(130,160,190,0.14)" />
         <Controls showInteractive={false} position="top-right" />
-        <MiniMap className="atlas-minimap" position="top-right" pannable zoomable maskColor="rgba(6,10,18,0.55)" nodeColor={(node: Node) => {
-          const concept = (node.data as { concept?: Concept }).concept
-          return concept ? QUADRANT_META[concept.quadrant].accent : '#7dd3c7'
-        }} />
+        <MiniMap
+          className="atlas-minimap"
+          position="bottom-right"
+          pannable
+          zoomable
+          maskColor="rgba(6,10,18,0.55)"
+          nodeColor={(node: Node) => {
+            const concept = (node.data as { concept?: Concept }).concept
+            return concept ? QUADRANT_META[concept.quadrant].accent : '#7dd3c7'
+          }}
+        />
       </ReactFlow>
       {menu ? (
         <div className="ctx-menu" style={{ left: menu.x, top: menu.y }}>
-          <button type="button" onClick={() => { onAddAt(menu.flowX, menu.flowY); setMenu(null) }}>Add card here</button>
-          <button type="button" onClick={() => setMenu(null)}>Cancel</button>
+          <button
+            type="button"
+            onClick={() => {
+              onAddAt(menu.flowX, menu.flowY)
+              setMenu(null)
+            }}
+          >
+            Add card here
+          </button>
+          <button type="button" onClick={() => setMenu(null)}>
+            Cancel
+          </button>
         </div>
       ) : null}
     </div>

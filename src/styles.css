@@ -1,7 +1,7 @@
 :root {
   color-scheme: dark;
   --desk: #07111c;
-  --panel: rgba(10, 18, 30, 0.88);
+  --panel: rgba(10, 18, 30, 0.92);
   --line: rgba(150, 190, 220, 0.16);
   --text: #e7f0f7;
   --muted: #8aa0b5;
@@ -15,9 +15,12 @@
 html, body, #root { height: 100%; margin: 0; background: var(--desk); color: var(--text); }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
-.boot { height: 100%; display: grid; place-items: center; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.crash { height: 100%; display: grid; place-content: center; gap: 12px; padding: 24px; text-align: center; }
+.crash pre { max-width: 640px; white-space: pre-wrap; color: #f0b429; }
+.crash button { background: #163042; border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; }
 .atlas-shell {
   height: 100%;
+  min-height: 100vh;
   display: grid;
   grid-template-columns: 232px minmax(0, 1fr) 292px;
   background: radial-gradient(circle at 50% 40%, rgba(70, 110, 150, 0.12), transparent 36%), linear-gradient(180deg, #081421 0%, #050b14 100%);
@@ -54,7 +57,7 @@ button { cursor: pointer; }
 .tag-stance .dot { background: #c084fc; }
 .tag-form .dot { background: #60a5fa; }
 .ghost-reset { margin-top: 24px; width: 100%; background: transparent; border: 1px dashed var(--line); border-radius: 10px; padding: 8px; color: var(--muted); }
-.atlas-main { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; }
+.atlas-main { display: grid; grid-template-rows: auto minmax(280px, 1fr) auto; min-width: 0; min-height: 0; }
 .atlas-topbar { display: flex; justify-content: space-between; align-items: end; padding: 12px 16px 8px; }
 .eyebrow { margin: 0; color: var(--muted); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; }
 .atlas-topbar h1 { margin: 2px 0 0; font-size: 22px; font-weight: 600; }
@@ -63,8 +66,8 @@ button { cursor: pointer; }
   background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12px;
 }
 .edit-toggle { display: flex; gap: 6px; align-items: center; color: var(--muted); }
-.atlas-canvas { position: relative; min-height: 0; }
-.atlas-canvas .react-flow { background: transparent; }
+.atlas-canvas { position: relative; min-height: 280px; height: 100%; width: 100%; }
+.atlas-canvas .react-flow { background: transparent; width: 100%; height: 100%; }
 .quadrant-stage {
   pointer-events: none; position: absolute; inset: 28px 28px 48px 28px;
   display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 14px; z-index: 0;
@@ -104,7 +107,7 @@ button { cursor: pointer; }
 .ring-value { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
 .maturity-wrap em { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; font-size: 11px; font-family: ui-sans-serif, system-ui, sans-serif; }
 .port { width: 8px; height: 8px; background: var(--accent); border: 0; opacity: 0.7; }
-.atlas-minimap { background: rgba(8, 14, 22, 0.9) !important; border: 1px solid var(--line) !important; margin-top: 48px !important; }
+.atlas-minimap { background: rgba(8, 14, 22, 0.9) !important; border: 1px solid var(--line) !important; }
 .react-flow__controls { box-shadow: none; border: 1px solid var(--line); overflow: hidden; border-radius: 10px; }
 .react-flow__controls-button { background: #0d1724; border-bottom: 1px solid var(--line); fill: #cfe0ee; }
 .hint-bar { margin: 0; padding: 8px 16px 12px; color: var(--muted); font-size: 12px; }
