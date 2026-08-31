@@ -131,7 +131,10 @@ function ConceptNodeComponent({ id, data, selected }: NodeProps<ConceptFlowNode>
           onBlur={(event) => commit(event.currentTarget.value)}
         />
       ) : (
-        <h3>{title}</h3>
+        <>
+          <h3>{title}</h3>
+          {selected && data.essence ? <p>{data.essence}</p> : null}
+        </>
       )}
     </article>
   )
