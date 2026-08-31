@@ -7,7 +7,7 @@ export default defineConfig(({ command }) => ({
     {
       name: 'serve-app-as-index',
       configureServer(server) {
-        server.middlewares.use((req, _res, next) => {
+        server.middlewares.use((req: { url?: string }, _res, next) => {
           const url = req.url ?? ''
           if (url === '/' || url === '/index.html') req.url = '/app.html'
           next()
