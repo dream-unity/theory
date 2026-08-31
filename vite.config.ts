@@ -8,7 +8,8 @@ export default defineConfig(({ command }) => ({
       name: 'serve-app-as-index',
       configureServer(server) {
         server.middlewares.use((req, _res, next) => {
-          if (req.url === '/' || req.url === '/index.html') req.url = '/app.html'
+          const url = req.url ?? ''
+          if (url === '/' || url === '/index.html') req.url = '/app.html'
           next()
         })
       },
