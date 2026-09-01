@@ -1,124 +1,159 @@
-import type { PlexZones } from '../types'
-import type { CreateKind } from '../lib/mutate'
-import { childrenOf, jumpsOf, parentsOf } from '../lib/plex'
-import { SEED } from '../seed'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { BrainDocument, CreateKind, PlexZones } from '../types'
+import { childrenOf, curvePath, gatePoint, jumpsOf, layoutPlex, parentsOf } from '../lib/plex'
+
+type Menu = { x: number; y: number; id: string } | null
+type Drag = { fromId: string; kind: CreateKind; x: number; y: number } | null
 
 export function Plex({
+  doc,
   zones,
-  activeId,
+  expand,
   onActivate,
   onCreate,
+  onLink,
+  onForget,
+  onPin,
 }: {
+  doc: BrainDocument
   zones: PlexZones
-  activeId: string
+  expand: boolean
   onActivate: (id: string) => void
-  onCreate: (kind: CreateKind) => void
+  onCreate: (kind: CreateKind, fromId: string) => void
+  onLink: (fromId: string, toId: string, kind: CreateKind) => void
+  onForget: (id: string) => void
+  onPin: (id: string) => void
 }) {
-  const { active, parents, children, jumps, siblings } = zones
+  const host = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ w: 1000, h: 700 })
+  const [drag, setDrag] = useState<Drag>(null)
+  const [menu, setMenu] = useState<Menu>(null)
+
+  useEffect(() => {
+    const el = host.current
+    if (!el) return
+    const apply = () => setSize({ w: el.clientWidth, h: el.clientHeight })
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const { nodes, edges } = useMemo(() => layoutPlex(zones, size.w, size.h, expand), [zones, size, expand])
+  const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes])
+
+  useEffect(() => {
+    const close = () => setMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [])
+
+  function startGate(event: React.PointerEvent, fromId: string, kind: CreateKind) {
+    event.preventDefault()
+    event.stopPropagation()
+    const rect = host.current?.getBoundingClientRect()
+    if (!rect) return
+    setDrag({ fromId, kind, x: event.clientX - rect.left, y: event.clientY - rect.top })
+  }
+
+  function move(event: React.PointerEvent) {
+    if (!drag || !host.current) return
+    const rect = host.current.getBoundingClientRect()
+    setDrag({ ...drag, x: event.clientX - rect.left, y: event.clientY - rect.top })
+  }
+
+  function endDrag(event: React.PointerEvent) {
+    if (!drag) return
+    const target = (event.target as HTMLElement).closest('[data-thought-id]')
+    const toId = target?.getAttribute('data-thought-id')
+    if (toId && toId !== drag.fromId) onLink(drag.fromId, toId, drag.kind)
+    else onCreate(drag.kind, drag.fromId)
+    setDrag(null)
+  }
+
+  const origin = drag ? byId.get(drag.fromId) : undefined
+  const originGate = origin ? gatePoint(origin, drag?.kind === 'parent' ? 'parent' : drag?.kind === 'child' ? 'child' : 'jump') : null
+
   return (
-    <div className="plex">
-      <svg className="plex-lines" viewBox="0 0 1000 700" preserveAspectRatio="none">
-        {parents.map((_, index) => (
-          <path key={`p${index}`} d={curve(500, 310, slotX(parents.length, index), 120)} />
-        ))}
-        {children.map((_, index) => (
-          <path key={`c${index}`} d={curve(500, 390, slotX(children.length, index), 560)} />
-        ))}
-        {jumps.map((_, index) => (
-          <path key={`j${index}`} d={curve(430, 350, 160, stackY(jumps.length, index))} />
-        ))}
-        {siblings.map((_, index) => (
-          <path key={`s${index}`} d={curve(570, 350, 840, stackY(siblings.length, index))} />
-        ))}
+    <div ref={host} className="plex" onPointerMove={move} onPointerUp={endDrag} onContextMenu={(event) => event.preventDefault()}>
+      <svg className="plex-lines" width={size.w} height={size.h}>
+        {edges.map((edge) => {
+          const from = byId.get(edge.fromId)
+          const to = byId.get(edge.toId)
+          if (!from || !to) return null
+          const a =
+            edge.kind === 'jump'
+              ? gatePoint(from, from.role === 'jump' ? 'center' : 'jump')
+              : edge.kind === 'sibling'
+                ? gatePoint(from, 'center')
+                : from.y < to.y
+                  ? gatePoint(from, 'child')
+                  : gatePoint(from, 'parent')
+          const b =
+            edge.kind === 'jump'
+              ? gatePoint(to, to.role === 'jump' ? 'center' : 'jump')
+              : edge.kind === 'sibling'
+                ? gatePoint(to, 'center')
+                : from.y < to.y
+                  ? gatePoint(to, 'parent')
+                  : gatePoint(to, 'child')
+          return <path key={edge.id} d={curvePath(a.x, a.y, b.x, b.y)} className={`link link-${edge.kind}`} />
+        })}
+        {drag && originGate ? <path d={curvePath(originGate.x, originGate.y, drag.x, drag.y)} className="link link-drag" /> : null}
       </svg>
 
-      <div className="zone parents">
-        {parents.map((thought) => (
-          <ThoughtChip key={thought.id} name={thought.name} color={thought.color} label={thought.label} onClick={() => onActivate(thought.id)} />
-        ))}
-      </div>
-
-      <div className="zone jumps">
-        {jumps.map((thought) => (
-          <ThoughtChip key={thought.id} name={thought.name} color={thought.color} label={thought.label} onClick={() => onActivate(thought.id)} />
-        ))}
-      </div>
-
-      <div className="zone active-wrap">
-        <div className="thought active-thought" style={{ borderColor: active.color, boxShadow: `0 0 0 1px ${active.color}55, 0 18px 50px rgba(0,0,0,.45)` }}>
-          <button type="button" className="gate parent-gate" title="Create parent (F7)" onClick={() => onCreate('parent')} data-filled={parents.length > 0} />
-          <button type="button" className="gate jump-gate" title="Create jump (F8)" onClick={() => onCreate('jump')} data-filled={jumps.length > 0} />
-          <div className="thought-body">
-            {active.label ? <em>{active.label}</em> : null}
-            <strong>{active.name}</strong>
+      {nodes.map((node) => {
+        const filledParent = parentsOf(doc, node.id).length > 0
+        const filledChild = childrenOf(doc, node.id).length > 0
+        const filledJump = jumpsOf(doc, node.id).length > 0
+        return (
+          <div
+            key={node.id}
+            className={`thought role-${node.role}`}
+            data-thought-id={node.id}
+            style={{
+              left: node.x,
+              top: node.y,
+              width: node.w,
+              height: node.h,
+              borderColor: node.thought.color,
+              color: node.role === 'active' ? '#f8fbff' : node.thought.color,
+            }}
+            onClick={() => onActivate(node.id)}
+            onDoubleClick={() => onCreate('child', node.id)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setMenu({ x: event.clientX, y: event.clientY, id: node.id })
+            }}
+          >
+            <button type="button" className="gate parent-gate" data-filled={filledParent} title="Drag to create / link parent" onPointerDown={(event) => startGate(event, node.id, 'parent')} />
+            <button type="button" className="gate jump-gate" data-filled={filledJump} title="Drag to create / link jump" onPointerDown={(event) => startGate(event, node.id, 'jump')} />
+            <button type="button" className="gate child-gate" data-filled={filledChild} title="Drag to create / link child" onPointerDown={(event) => startGate(event, node.id, 'child')} />
+            {node.thought.label ? <em>{node.thought.label}</em> : null}
+            <strong>{node.thought.name}</strong>
           </div>
-          <button type="button" className="gate child-gate" title="Create child (F6)" onClick={() => onCreate('child')} data-filled={children.length > 0} />
+        )
+      })}
+
+      <div className="plex-legend">
+        <span>↑ parents</span>
+        <span>↓ children</span>
+        <span>← jumps</span>
+        <span>→ siblings</span>
+        <span>drag a gate to link</span>
+      </div>
+
+      {menu ? (
+        <div className="ctx-menu" style={{ left: menu.x, top: menu.y }} onClick={(event) => event.stopPropagation()}>
+          <button type="button" onClick={() => { onActivate(menu.id); setMenu(null) }}>Activate</button>
+          <button type="button" onClick={() => { onCreate('child', menu.id); setMenu(null) }}>Create child</button>
+          <button type="button" onClick={() => { onCreate('parent', menu.id); setMenu(null) }}>Create parent</button>
+          <button type="button" onClick={() => { onCreate('jump', menu.id); setMenu(null) }}>Create jump</button>
+          <button type="button" onClick={() => { onPin(menu.id); setMenu(null) }}>Pin / unpin</button>
+          <button type="button" onClick={() => { onForget(menu.id); setMenu(null) }}>Forget</button>
         </div>
-      </div>
-
-      <div className="zone siblings">
-        {siblings.map((thought) => (
-          <ThoughtChip key={thought.id} name={thought.name} color={thought.color} label={thought.label} onClick={() => onActivate(thought.id)} />
-        ))}
-      </div>
-
-      <div className="zone children">
-        {children.map((thought) => (
-          <ThoughtChip
-            key={thought.id}
-            name={thought.name}
-            color={thought.color}
-            label={thought.label}
-            filledChild={looksFilled(thought.id)}
-            onClick={() => onActivate(thought.id)}
-          />
-        ))}
-      </div>
-
-      <p className="plex-hint">Click a thought to activate it · Gates create parent / jump / child · F6 F7 F8</p>
-      <span className="sr-only">{activeId}</span>
+      ) : null}
     </div>
   )
-}
-
-function ThoughtChip({
-  name,
-  color,
-  label,
-  onClick,
-}: {
-  name: string
-  color: string
-  label?: string
-  filledChild?: boolean
-  onClick: () => void
-}) {
-  return (
-    <button type="button" className="thought" style={{ borderColor: color }} onClick={onClick}>
-      {label ? <em>{label}</em> : null}
-      <strong>{name}</strong>
-    </button>
-  )
-}
-
-function slotX(count: number, index: number): number {
-  if (count <= 1) return 500
-  const span = Math.min(760, count * 130)
-  const start = 500 - span / 2
-  return start + (span / (count - 1)) * index
-}
-
-function stackY(count: number, index: number): number {
-  const start = 350 - ((count - 1) * 48) / 2
-  return start + index * 48
-}
-
-function curve(x1: number, y1: number, x2: number, y2: number): string {
-  const mx = (x1 + x2) / 2
-  const my = (y1 + y2) / 2
-  return `M ${x1} ${y1} Q ${mx} ${y1} ${mx} ${my} T ${x2} ${y2}`
-}
-
-function looksFilled(id: string): boolean {
-  return childrenOf(SEED, id).length + jumpsOf(SEED, id).length + parentsOf(SEED, id).length > 1
 }
