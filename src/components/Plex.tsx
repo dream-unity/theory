@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { BrainDocument, CreateKind, PlexZones } from '../types'
 import { childrenOf, curvePath, gatePoint, jumpsOf, layoutPlex, parentsOf } from '../lib/plex'
 
@@ -48,7 +48,7 @@ export function Plex({
     return () => window.removeEventListener('click', close)
   }, [])
 
-  function startGate(event: React.PointerEvent, fromId: string, kind: CreateKind) {
+  function startGate(event: ReactPointerEvent, fromId: string, kind: CreateKind) {
     event.preventDefault()
     event.stopPropagation()
     const rect = host.current?.getBoundingClientRect()
@@ -56,13 +56,13 @@ export function Plex({
     setDrag({ fromId, kind, x: event.clientX - rect.left, y: event.clientY - rect.top })
   }
 
-  function move(event: React.PointerEvent) {
+  function move(event: ReactPointerEvent) {
     if (!drag || !host.current) return
     const rect = host.current.getBoundingClientRect()
     setDrag({ ...drag, x: event.clientX - rect.left, y: event.clientY - rect.top })
   }
 
-  function endDrag(event: React.PointerEvent) {
+  function endDrag(event: ReactPointerEvent) {
     if (!drag) return
     const target = (event.target as HTMLElement).closest('[data-thought-id]')
     const toId = target?.getAttribute('data-thought-id')
