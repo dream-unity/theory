@@ -7,7 +7,6 @@ const C = {
   violet: '#a78bfa',
   rose: '#f472b6',
   sky: '#38bdf8',
-  slate: '#94a3b8',
 }
 
 function t(id: string, name: string, color: string, notes: string, extra: Partial<Thought> = {}): Thought {
