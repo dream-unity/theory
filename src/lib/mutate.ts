@@ -43,13 +43,19 @@ function jumpLink(fromId: string, toId: string): Link {
   return { id: uid('e'), kind: 'jump', from: fromId, to: toId }
 }
 
+function relatedLink(fromId: string, toId: string): Link {
+  return { id: uid('e'), kind: 'related', from: fromId, to: toId }
+}
+
 function linksForCreate(doc: BrainDocument, fromId: string, toId: string, kind: CreateKind): Link[] {
+  if (kind === 'free') return []
+  if (kind === 'related') return [relatedLink(fromId, toId)]
   if (kind === 'jump') return [jumpLink(fromId, toId)]
   if (kind === 'child') return [childLink(fromId, toId)]
   if (kind === 'parent') return [childLink(toId, fromId)]
   const parents = parentsOf(doc, fromId)
   if (parents.length) return parents.map((parent) => childLink(parent, toId))
-  return [jumpLink(fromId, toId)]
+  return [relatedLink(fromId, toId)]
 }
 
 export function createLinkedThought(
@@ -63,6 +69,7 @@ export function createLinkedThought(
   const title = name.trim() || 'New Thought'
   const existing = findByName(doc, title)
   if (existing && existing.id !== fromId) {
+    if (kind === 'free') return focus === 'source' ? activate(doc, fromId) : activate(doc, existing.id)
     const linked = linkThoughts(doc, fromId, existing.id, kind)
     return focus === 'source' ? activate(linked, fromId) : linked
   }
@@ -86,7 +93,7 @@ export function createLinkedThought(
 }
 
 export function linkThoughts(doc: BrainDocument, fromId: string, toId: string, kind: CreateKind): BrainDocument {
-  if (fromId === toId) return doc
+  if (fromId === toId || kind === 'free') return doc
   const additions = linksForCreate(doc, fromId, toId, kind).filter((link) => !hasLink(doc.links, link.kind, link.from, link.to))
   if (!additions.length) return activate(doc, toId)
   return activate(stamp({ ...doc, links: [...doc.links, ...additions] }), toId)
