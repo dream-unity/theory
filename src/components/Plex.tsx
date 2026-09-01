@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { BrainDocument, CreateKind, PlexZones } from '../types'
-import { childrenOf, curvePath, gatePoint, jumpsOf, layoutPlex, parentsOf } from '../lib/plex'
+import { childrenOf, curvePath, gatePoint, jumpsOf, layoutPlex, nextCreateKind, parentsOf, relationFromPoint } from '../lib/plex'
 
 type Menu = { x: number; y: number; id: string } | null
 type Drag = {
@@ -12,8 +12,18 @@ type Drag = {
   startY: number
   moved: boolean
 } | null
+type Draft = {
+  x: number
+  y: number
+  kind: CreateKind
+  name: string
+  fromId: string
+}
+type Press = { x: number; y: number }
 
 const TAP_SLOP = 14
+const DRAFT_W = 188
+const DRAFT_H = 54
 
 export function Plex({
   doc,
@@ -21,6 +31,7 @@ export function Plex({
   expand,
   onActivate,
   onCreate,
+  onCommit,
   onLink,
   onForget,
   onPin,
@@ -30,16 +41,20 @@ export function Plex({
   expand: boolean
   onActivate: (id: string) => void
   onCreate: (kind: CreateKind, fromId: string) => void
+  onCommit: (kind: CreateKind, fromId: string, name: string) => void
   onLink: (fromId: string, toId: string, kind: CreateKind) => void
   onForget: (id: string) => void
   onPin: (id: string) => void
 }) {
   const host = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
   const skipClick = useRef(false)
+  const press = useRef<Press | null>(null)
   const [size, setSize] = useState({ w: 1000, h: 700 })
   const [drag, setDrag] = useState<Drag>(null)
   const [hover, setHover] = useState<string | null>(null)
   const [menu, setMenu] = useState<Menu>(null)
+  const [draft, setDraft] = useState<Draft | null>(null)
 
   useEffect(() => {
     const el = host.current
@@ -53,12 +68,19 @@ export function Plex({
 
   const { nodes, edges } = useMemo(() => layoutPlex(zones, size.w, size.h, expand), [zones, size, expand])
   const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes])
+  const activeNode = byId.get(doc.activeId) ?? nodes.find((node) => node.role === 'active')
 
   useEffect(() => {
     const close = () => setMenu(null)
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
   }, [])
+
+  useEffect(() => {
+    if (!draft) return
+    input.current?.focus()
+    input.current?.select()
+  }, [draft])
 
   function localPoint(event: ReactPointerEvent | PointerEvent) {
     const rect = host.current?.getBoundingClientRect()
@@ -75,12 +97,45 @@ export function Plex({
     return null
   }
 
+  function isChrome(target: EventTarget | null) {
+    const el = target as HTMLElement | null
+    if (!el) return false
+    return Boolean(el.closest('.thought, .gate, .quick-add, .ctx-menu, .inline-draft'))
+  }
+
+  function openDraft(point: { x: number; y: number }, kind?: CreateKind) {
+    if (!activeNode) return
+    const left = Math.max(12, Math.min(size.w - DRAFT_W - 12, point.x - DRAFT_W / 2))
+    const top = Math.max(12, Math.min(size.h - DRAFT_H - 12, point.y - DRAFT_H / 2))
+    setMenu(null)
+    setDraft({
+      x: left,
+      y: top,
+      kind: kind ?? relationFromPoint(activeNode, point),
+      name: '',
+      fromId: activeNode.id,
+    })
+  }
+
+  function finishDraft(next = draft) {
+    if (!next) return
+    const name = next.name.trim()
+    if (!name) {
+      setDraft(null)
+      return
+    }
+    onCommit(next.kind, next.fromId, name)
+    setDraft(null)
+  }
+
   function startGate(event: ReactPointerEvent, fromId: string, kind: CreateKind) {
     event.preventDefault()
     event.stopPropagation()
     skipClick.current = true
+    press.current = null
     const point = localPoint(event)
     host.current?.setPointerCapture(event.pointerId)
+    setDraft(null)
     setDrag({ fromId, kind, x: point.x, y: point.y, startX: point.x, startY: point.y, moved: false })
   }
 
@@ -111,18 +166,51 @@ export function Plex({
     setHover(null)
   }
 
+  function onBackgroundDown(event: ReactPointerEvent) {
+    if (event.button !== 0) return
+    if (drag || isChrome(event.target)) {
+      press.current = null
+      return
+    }
+    press.current = localPoint(event)
+  }
+
+  function onBackgroundUp(event: ReactPointerEvent) {
+    if (drag) {
+      endDrag(event)
+      press.current = null
+      return
+    }
+    const start = press.current
+    press.current = null
+    if (!start || event.button !== 0) return
+    const point = localPoint(event)
+    if (Math.hypot(point.x - start.x, point.y - start.y) > TAP_SLOP) return
+    if (isChrome(event.target) || hitThought(point.x, point.y)) return
+    if (draft?.name.trim()) onCommit(draft.kind, draft.fromId, draft.name.trim())
+    openDraft(point)
+  }
+
   const origin = drag ? byId.get(drag.fromId) : undefined
   const originGate = origin
     ? gatePoint(origin, drag?.kind === 'parent' ? 'parent' : drag?.kind === 'child' ? 'child' : 'jump')
+    : null
+  const draftFrom = draft ? byId.get(draft.fromId) : undefined
+  const draftGate = draftFrom
+    ? gatePoint(draftFrom, draft?.kind === 'parent' ? 'parent' : draft?.kind === 'child' ? 'child' : 'jump')
     : null
 
   return (
     <div
       ref={host}
-      className={`plex${drag ? ' is-wiring' : ''}`}
+      className={`plex${drag ? ' is-wiring' : ''}${draft ? ' is-drafting' : ' is-capturing'}`}
+      onPointerDown={onBackgroundDown}
       onPointerMove={move}
-      onPointerUp={endDrag}
-      onPointerCancel={cancelDrag}
+      onPointerUp={onBackgroundUp}
+      onPointerCancel={() => {
+        cancelDrag()
+        press.current = null
+      }}
       onContextMenu={(event) => event.preventDefault()}
     >
       <svg className="plex-lines" width={size.w} height={size.h}>
@@ -151,6 +239,12 @@ export function Plex({
         {drag?.moved && originGate ? (
           <path d={curvePath(originGate.x, originGate.y, drag.x, drag.y)} className="link link-drag" />
         ) : null}
+        {draft && draftGate ? (
+          <path
+            d={curvePath(draftGate.x, draftGate.y, draft.x + DRAFT_W / 2, draft.y + DRAFT_H / 2)}
+            className={`link link-drag link-${draft.kind}`}
+          />
+        ) : null}
       </svg>
 
       {nodes.map((node) => {
@@ -175,6 +269,7 @@ export function Plex({
                 skipClick.current = false
                 return
               }
+              if (draft) setDraft(null)
               onActivate(node.id)
             }}
             onDoubleClick={() => onCreate('child', node.id)}
@@ -200,10 +295,48 @@ export function Plex({
         )
       })}
 
+      {draft ? (
+        <form
+          className={`inline-draft kind-${draft.kind}`}
+          style={{ left: draft.x, top: draft.y, width: DRAFT_W, height: DRAFT_H }}
+          onSubmit={(event) => {
+            event.preventDefault()
+            finishDraft()
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+          onPointerUp={(event) => event.stopPropagation()}
+        >
+          <em>{draft.kind}</em>
+          <input
+            ref={input}
+            value={draft.name}
+            placeholder="Name the thought"
+            aria-label={`New ${draft.kind} thought`}
+            onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                setDraft(null)
+              }
+              if (event.key === 'Tab') {
+                event.preventDefault()
+                setDraft({ ...draft, kind: nextCreateKind(draft.kind) })
+              }
+            }}
+            onBlur={() => {
+              window.setTimeout(() => {
+                if (document.activeElement === input.current) return
+                if (!draft.name.trim()) setDraft(null)
+              }, 80)
+            }}
+          />
+        </form>
+      ) : null}
+
       <div className="plex-legend">
-        <span>tap a dot to create</span>
-        <span>drag a dot onto another thought to link</span>
-        <span>↑ parent · ↓ child · ← jump</span>
+        <span>tap empty space to think</span>
+        <span>↑ parent · ↓ child · ← jump · → sibling</span>
+        <span>tap a dot to create · drag a dot to link</span>
       </div>
 
       {menu ? (
