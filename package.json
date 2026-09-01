@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build && node scripts/finalize-build.mjs",
     "pages:prepare": "npm run build && node scripts/sync-pages-root.mjs",
     "preview": "vite preview",
-    "test": "vitest run src/lib/plex.test.ts",
+    "test": "vitest run src/lib/plex.test.ts src/lib/store.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {
