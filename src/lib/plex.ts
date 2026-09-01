@@ -1,4 +1,4 @@
-import type { BrainDocument, Link, PlexEdge, PlexZones, PlacedThought, Thought } from '../types'
+import type { BrainDocument, CreateKind, Link, PlexEdge, PlexZones, PlacedThought, Thought } from '../types'
 
 export function thoughtMap(doc: BrainDocument): Map<string, Thought> {
   return new Map(doc.thoughts.map((thought) => [thought.id, thought]))
@@ -188,4 +188,29 @@ export function curvePath(x1: number, y1: number, x2: number, y2: number): strin
   const cx2 = x2 - dx * 0.15
   const cy2 = y2 + (dy > 0 ? lift : -lift * 0.35)
   return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
+}
+
+export function relationFromPoint(
+  active: { x: number; y: number; w: number; h: number },
+  point: { x: number; y: number },
+): CreateKind {
+  const cx = active.x + active.w / 2
+  const cy = active.y + active.h / 2
+  const dx = point.x - cx
+  const dy = point.y - cy
+  const inside =
+    point.x >= active.x - 16 &&
+    point.x <= active.x + active.w + 16 &&
+    point.y >= active.y - 16 &&
+    point.y <= active.y + active.h + 16
+  if (inside) return 'child'
+  if (Math.abs(dy) >= Math.abs(dx)) return dy < 0 ? 'parent' : 'child'
+  return dx < 0 ? 'jump' : 'sibling'
+}
+
+export function nextCreateKind(kind: CreateKind): CreateKind {
+  if (kind === 'parent') return 'jump'
+  if (kind === 'jump') return 'child'
+  if (kind === 'child') return 'sibling'
+  return 'parent'
 }
