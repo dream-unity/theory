@@ -167,14 +167,30 @@ export function layoutPlex(
   const relatedRadius = Math.min(width, height) * 0.28
   const looseRadius = Math.min(width, height) * 0.4
 
+  function parked(items: Thought[], fallback: PlacedThought[], role: PlacedThought['role']): PlacedThought[] {
+    return items.map((thought, index) => {
+      const laid = fallback[index]
+      if (!laid || typeof thought.x !== 'number' || typeof thought.y !== 'number') return laid
+      return {
+        id: thought.id,
+        thought,
+        role,
+        x: Math.max(12, Math.min(width - tw - 12, thought.x)),
+        y: Math.max(12, Math.min(height - th - 12, thought.y)),
+        w: tw,
+        h: th,
+      }
+    })
+  }
+
   const nodes: PlacedThought[] = [
     { id: zones.active.id, thought: zones.active, role: 'active', x: cx - aw / 2, y: cy - ah / 2, w: aw, h: ah },
     ...row(zones.parents, parentY - th / 2, cx, gap, tw, th, 'parent'),
     ...row(zones.children, childY - th / 2, cx, gap, tw, th, 'child'),
     ...column(zones.jumps, jumpX, cy, gap, tw, th, 'jump'),
     ...column(zones.siblings, sibX, cy, gap, tw, th, 'sibling'),
-    ...ring(zones.related, cx, cy, relatedRadius, tw, th, 'related'),
-    ...ring(zones.loose, cx, cy, looseRadius, tw, th, 'loose'),
+    ...parked(zones.related, ring(zones.related, cx, cy, relatedRadius, tw, th, 'related'), 'related'),
+    ...parked(zones.loose, ring(zones.loose, cx, cy, looseRadius, tw, th, 'loose'), 'loose'),
   ]
 
   if (expand && zones.grandparents.length) {
