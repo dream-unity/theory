@@ -22,7 +22,7 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [view, setView] = useState<ViewMode>('plex')
   const [expand, setExpand] = useState(false)
-  const [spark, setSpark] = useState<{ kind: CreateKind; fromId: string } | null>(null)
+  const [composer, setComposer] = useState<{ kind: CreateKind; fromId: string; name: string } | null>(null)
   const [pane, setPane] = useState(400)
 
   useEffect(() => {
@@ -43,15 +43,15 @@ export default function App() {
       }
       if (event.key === 'F6') {
         event.preventDefault()
-        setSpark({ kind: 'child', fromId: doc.activeId })
+        setComposer({ kind: 'child', fromId: doc.activeId, name: '' })
       }
       if (event.key === 'F7') {
         event.preventDefault()
-        setSpark({ kind: 'parent', fromId: doc.activeId })
+        setComposer({ kind: 'parent', fromId: doc.activeId, name: '' })
       }
       if (event.key === 'F8') {
         event.preventDefault()
-        setSpark({ kind: 'jump', fromId: doc.activeId })
+        setComposer({ kind: 'jump', fromId: doc.activeId, name: '' })
       }
       if (event.altKey && event.key === 'ArrowLeft') {
         event.preventDefault()
@@ -69,6 +69,7 @@ export default function App() {
         event.preventDefault()
         document.getElementById('instant-activate')?.focus()
       }
+      if (event.key === 'Escape') setComposer(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -84,7 +85,7 @@ export default function App() {
   function go(id: string) {
     setDoc((current) => activate(current, id))
     setQuery('')
-    setSpark(null)
+    setComposer(null)
   }
 
   if (!zones || !active) {
@@ -172,12 +173,8 @@ export default function App() {
               doc={doc}
               zones={zones}
               expand={expand}
-              spark={spark}
-              onSparkConsumed={() => setSpark(null)}
               onActivate={go}
-              onCommit={(kind, fromId, name, dive) => {
-                setDoc((current) => createLinkedThought(current, fromId, kind, name, { focus: dive ? 'new' : 'source' }))
-              }}
+              onCreate={(kind, fromId) => setComposer({ kind, fromId, name: '' })}
               onLink={(fromId, toId, kind) => setDoc((current) => linkThoughts(current, fromId, toId, kind))}
               onForget={(id) => setDoc((current) => forgetThought(current, id))}
               onPin={(id) => setDoc((current) => togglePin(current, id))}
@@ -223,6 +220,21 @@ export default function App() {
           onDetach={(id) => setDoc((current) => removeAttachment(current, active.id, id))}
         />
       </div>
+
+      {composer ? (
+        <form className="composer" onSubmit={(event) => {
+          event.preventDefault()
+          setDoc((current) => createLinkedThought(current, composer.fromId, composer.kind, composer.name))
+          setComposer(null)
+        }}>
+          <label>
+            Create {composer.kind}
+            <input autoFocus value={composer.name} onChange={(event) => setComposer({ ...composer, name: event.target.value })} placeholder="Thought name — existing names will be linked" />
+          </label>
+          <button type="submit">Create</button>
+          <button type="button" onClick={() => setComposer(null)}>Cancel</button>
+        </form>
+      ) : null}
     </div>
   )
 }
