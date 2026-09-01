@@ -25,10 +25,13 @@ describe('plex zones', () => {
   })
 
   it('keeps an unlinked thought visible without forcing a relation', () => {
-    const next = createLinkedThought(SEED, 'home', 'free', 'Solo Idea', 'source')
+    const next = createLinkedThought(SEED, 'home', 'free', 'Solo Idea', 'source', { x: 80, y: 90 })
     const zones = plexZones(next, 'home')
+    const solo = next.thoughts.find((thought) => thought.name === 'Solo Idea')
     expect(zones?.loose.some((thought) => thought.name === 'Solo Idea')).toBe(true)
-    expect(relatedOf(next, 'home')).not.toContain(next.thoughts.find((thought) => thought.name === 'Solo Idea')?.id)
+    expect(relatedOf(next, 'home')).not.toContain(solo?.id)
+    expect(solo?.x).toBe(80)
+    expect(solo?.y).toBe(90)
   })
 
   it('stores a simple mind-map line as related', () => {

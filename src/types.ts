@@ -18,6 +18,8 @@ export interface Thought {
   tags: string[]
   attachments: Attachment[]
   forgotten?: boolean
+  x?: number
+  y?: number
 }
 
 export interface Link {
