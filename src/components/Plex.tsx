@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { BrainDocument, CreateKind, PlexZones } from '../types'
 import { childrenOf, curvePath, gatePoint, jumpsOf, layoutPlex, parentsOf, relationFromPoint, zoneAnchor } from '../lib/plex'
 
@@ -183,22 +183,19 @@ export function Plex({
     openDraft(kind, drag.fromId, point.x, point.y)
   }
 
-  function onKey(event: React.KeyboardEvent<HTMLDivElement>) {
+  function onKey(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (draft) return
     if (event.ctrlKey || event.metaKey || event.altKey) return
     if (event.key === 'Escape') {
       setMenu(null)
       return
     }
-    if (event.key.length === 1 && !event.key.match(/\s/) === false && event.key !== ' ') {
-      // allow space? no, space reserved. Printable starts a child.
-    }
     if (event.key.length === 1 && !/\s/.test(event.key)) {
       event.preventDefault()
       const point = activeNode ? zoneAnchor(activeNode, 'child') : { x: size.w / 2, y: size.h / 2 + 80 }
       openDraft('child', zones.active.id, point.x + 90, point.y + 24, event.key)
     }
-    if (event.key === 'Enter' && !draft) {
+    if (event.key === 'Enter') {
       const point = activeNode ? zoneAnchor(activeNode, 'child') : { x: size.w / 2, y: size.h / 2 + 80 }
       openDraft('child', zones.active.id, point.x + 90, point.y + 24)
     }
