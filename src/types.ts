@@ -1,6 +1,6 @@
-export type LinkKind = 'child' | 'jump'
+export type LinkKind = 'child' | 'jump' | 'related'
 export type ViewMode = 'plex' | 'outline' | 'mindmap' | 'cards'
-export type CreateKind = 'child' | 'parent' | 'jump' | 'sibling'
+export type CreateKind = 'child' | 'parent' | 'jump' | 'sibling' | 'related' | 'free'
 
 export interface Attachment {
   id: string
@@ -62,6 +62,8 @@ export interface PlexZones {
   children: Thought[]
   jumps: Thought[]
   siblings: Thought[]
+  related: Thought[]
+  loose: Thought[]
   grandparents: Thought[]
   grandchildren: Thought[]
 }
@@ -69,7 +71,7 @@ export interface PlexZones {
 export interface PlacedThought {
   id: string
   thought: Thought
-  role: 'active' | 'parent' | 'child' | 'jump' | 'sibling' | 'grandparent' | 'grandchild'
+  role: 'active' | 'parent' | 'child' | 'jump' | 'sibling' | 'grandparent' | 'grandchild' | 'related' | 'loose'
   x: number
   y: number
   w: number

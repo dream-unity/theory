@@ -1,6 +1,7 @@
 import type { BrainDocument, CreateKind, Link, PlexEdge, PlexZones, PlacedThought, Thought } from '../types'
 
 export const THOUGHT_TYPES = ['', 'Practice', 'Portal', 'Principle', 'Lens', 'Core'] as const
+export const ADVANCED_KINDS: CreateKind[] = ['parent', 'child', 'jump', 'sibling']
 
 export function thoughtMap(doc: BrainDocument): Map<string, Thought> {
   return new Map(doc.thoughts.map((thought) => [thought.id, thought]))
@@ -21,6 +22,12 @@ export function childrenOf(doc: BrainDocument, id: string): string[] {
 export function jumpsOf(doc: BrainDocument, id: string): string[] {
   return doc.links
     .filter((link) => link.kind === 'jump' && (link.from === id || link.to === id))
+    .map((link) => (link.from === id ? link.to : link.from))
+}
+
+export function relatedOf(doc: BrainDocument, id: string): string[] {
+  return doc.links
+    .filter((link) => link.kind === 'related' && (link.from === id || link.to === id))
     .map((link) => (link.from === id ? link.to : link.from))
 }
 
@@ -53,14 +60,21 @@ export function plexZones(doc: BrainDocument, activeId = doc.activeId): PlexZone
   if (!active || active.forgotten) return null
   const parents = resolve(doc, parentsOf(doc, activeId))
   const children = resolve(doc, childrenOf(doc, activeId))
+  const jumps = resolve(doc, jumpsOf(doc, activeId))
+  const siblings = resolve(doc, siblingsOf(doc, activeId))
+  const related = resolve(doc, relatedOf(doc, activeId))
+  const taken = new Set([activeId, ...parents, ...children, ...jumps, ...siblings, ...related].map((item) => (typeof item === 'string' ? item : item.id)))
+  const loose = visibleThoughts(doc).filter((thought) => thought.id !== activeId && !taken.has(thought.id))
   const grandparentIds = parents.flatMap((parent) => parentsOf(doc, parent.id))
   const grandchildIds = children.flatMap((child) => childrenOf(doc, child.id))
   return {
     active,
     parents,
     children,
-    jumps: resolve(doc, jumpsOf(doc, activeId)),
-    siblings: resolve(doc, siblingsOf(doc, activeId)),
+    jumps,
+    siblings,
+    related,
+    loose,
     grandparents: resolve(doc, grandparentIds).filter((thought) => thought.id !== activeId),
     grandchildren: resolve(doc, grandchildIds).filter((thought) => thought.id !== activeId),
   }
@@ -81,8 +95,8 @@ export function findByName(doc: BrainDocument, name: string): Thought | undefine
 }
 
 export function hasLink(links: Link[], kind: Link['kind'], a: string, b: string): boolean {
-  if (kind === 'jump') {
-    return links.some((link) => link.kind === 'jump' && ((link.from === a && link.to === b) || (link.from === b && link.to === a)))
+  if (kind === 'jump' || kind === 'related') {
+    return links.some((link) => link.kind === kind && ((link.from === a && link.to === b) || (link.from === b && link.to === a)))
   }
   return links.some((link) => link.kind === 'child' && link.from === a && link.to === b)
 }
@@ -117,6 +131,22 @@ function column(items: Thought[], x: number, cy: number, gap: number, w: number,
   }))
 }
 
+function ring(items: Thought[], cx: number, cy: number, radius: number, w: number, h: number, role: PlacedThought['role']): PlacedThought[] {
+  if (!items.length) return []
+  return items.map((thought, index) => {
+    const angle = -Math.PI / 2 + (index * (2 * Math.PI)) / items.length
+    return {
+      id: thought.id,
+      thought,
+      role,
+      x: cx + Math.cos(angle) * radius - w / 2,
+      y: cy + Math.sin(angle) * radius - h / 2,
+      w,
+      h,
+    }
+  })
+}
+
 export function layoutPlex(
   zones: PlexZones,
   width: number,
@@ -134,6 +164,8 @@ export function layoutPlex(
   const childY = expand ? cy + 210 : cy + 150
   const jumpX = Math.max(24, cx - Math.min(360, width * 0.34))
   const sibX = Math.min(width - tw - 24, cx + Math.min(360, width * 0.34) - tw)
+  const relatedRadius = Math.min(width, height) * 0.28
+  const looseRadius = Math.min(width, height) * 0.4
 
   const nodes: PlacedThought[] = [
     { id: zones.active.id, thought: zones.active, role: 'active', x: cx - aw / 2, y: cy - ah / 2, w: aw, h: ah },
@@ -141,6 +173,8 @@ export function layoutPlex(
     ...row(zones.children, childY - th / 2, cx, gap, tw, th, 'child'),
     ...column(zones.jumps, jumpX, cy, gap, tw, th, 'jump'),
     ...column(zones.siblings, sibX, cy, gap, tw, th, 'sibling'),
+    ...ring(zones.related, cx, cy, relatedRadius, tw, th, 'related'),
+    ...ring(zones.loose, cx, cy, looseRadius, tw, th, 'loose'),
   ]
 
   if (expand && zones.grandparents.length) {
@@ -162,6 +196,7 @@ export function layoutPlex(
   for (const child of zones.children) add(zones.active.id, child.id, 'child')
   for (const jump of zones.jumps) add(zones.active.id, jump.id, 'jump')
   for (const sibling of zones.siblings) add(zones.active.id, sibling.id, 'sibling')
+  for (const related of zones.related) add(zones.active.id, related.id, 'related')
   if (expand) {
     for (const parent of zones.parents) {
       for (const grand of zones.grandparents) add(grand.id, parent.id, 'child')
@@ -205,14 +240,16 @@ export function relationFromPoint(
     point.x <= active.x + active.w + 16 &&
     point.y >= active.y - 16 &&
     point.y <= active.y + active.h + 16
-  if (inside) return 'child'
+  if (inside) return 'related'
   if (Math.abs(dy) >= Math.abs(dx)) return dy < 0 ? 'parent' : 'child'
   return dx < 0 ? 'jump' : 'sibling'
 }
 
 export function nextCreateKind(kind: CreateKind): CreateKind {
+  if (kind === 'free') return 'related'
+  if (kind === 'related') return 'parent'
   if (kind === 'parent') return 'jump'
   if (kind === 'jump') return 'child'
   if (kind === 'child') return 'sibling'
-  return 'parent'
+  return 'free'
 }
