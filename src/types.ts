@@ -1,4 +1,12 @@
 export type LinkKind = 'child' | 'jump'
+export type ViewMode = 'plex' | 'outline' | 'mindmap' | 'cards'
+export type CreateKind = 'child' | 'parent' | 'jump'
+
+export interface Attachment {
+  id: string
+  title: string
+  url?: string
+}
 
 export interface Thought {
   id: string
@@ -8,7 +16,7 @@ export interface Thought {
   color: string
   icon?: string
   tags: string[]
-  attachments: { id: string; title: string; url?: string }[]
+  attachments: Attachment[]
   forgotten?: boolean
 }
 
@@ -20,7 +28,7 @@ export interface Link {
 }
 
 export interface BrainDocument {
-  schemaVersion: 3
+  schemaVersion: 4
   title: string
   homeId: string
   activeId: string
@@ -28,6 +36,7 @@ export interface BrainDocument {
   thoughts: Thought[]
   links: Link[]
   history: string[]
+  historyIndex: number
   updatedAt: string
 }
 
@@ -37,4 +46,23 @@ export interface PlexZones {
   children: Thought[]
   jumps: Thought[]
   siblings: Thought[]
+  grandparents: Thought[]
+  grandchildren: Thought[]
+}
+
+export interface PlacedThought {
+  id: string
+  thought: Thought
+  role: 'active' | 'parent' | 'child' | 'jump' | 'sibling' | 'grandparent' | 'grandchild'
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface PlexEdge {
+  id: string
+  kind: LinkKind | 'sibling'
+  fromId: string
+  toId: string
 }
