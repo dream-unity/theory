@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SEED } from '../seed'
-import { childrenOf, parentsOf, plexZones, siblingsOf } from './plex'
+import { childrenOf, parentsOf, plexZones, relationFromPoint, siblingsOf } from './plex'
 
 describe('plex zones', () => {
   it('puts Dream Unity children below the home thought', () => {
@@ -21,5 +21,20 @@ describe('plex zones', () => {
     const zones = plexZones(SEED, 'unity-core')
     expect(zones?.jumps.some((t) => t.id === 'creative-freedom')).toBe(true)
     expect(zones?.parents.some((t) => t.id === 'unity')).toBe(true)
+  })
+})
+
+describe('spatial capture', () => {
+  const active = { x: 400, y: 300, w: 200, h: 60 }
+
+  it('reads the TheBrain compass from an empty tap', () => {
+    expect(relationFromPoint(active, { x: 500, y: 120 })).toBe('parent')
+    expect(relationFromPoint(active, { x: 500, y: 520 })).toBe('child')
+    expect(relationFromPoint(active, { x: 120, y: 330 })).toBe('jump')
+    expect(relationFromPoint(active, { x: 860, y: 330 })).toBe('sibling')
+  })
+
+  it('defaults a tap on the active thought to child', () => {
+    expect(relationFromPoint(active, { x: 500, y: 330 })).toBe('child')
   })
 })
