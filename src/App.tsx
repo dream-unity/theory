@@ -134,7 +134,7 @@ export default function App() {
             onKeyDown={(event) => {
               if (event.key === 'Enter' && query.trim()) {
                 if (hits[0]) go(hits[0].id)
-                else setDoc((current) => createLinkedThought(current, current.activeId, 'child', query.trim()))
+                else setDoc((current) => createLinkedThought(current, current.activeId, 'child', query.trim(), 'source'))
                 setQuery('')
               }
             }}
@@ -175,7 +175,7 @@ export default function App() {
               expand={expand}
               onActivate={go}
               onCreate={(kind, fromId) => setComposer({ kind, fromId, name: '' })}
-              onCommit={(kind, fromId, name) => setDoc((current) => createLinkedThought(current, fromId, kind, name, 'source'))}
+              onCommit={(kind, fromId, name, label) => setDoc((current) => createLinkedThought(current, fromId, kind, name, 'source', { label }))}
               onLink={(fromId, toId, kind) => setDoc((current) => linkThoughts(current, fromId, toId, kind))}
               onForget={(id) => setDoc((current) => forgetThought(current, id))}
               onPin={(id) => setDoc((current) => togglePin(current, id))}
@@ -225,7 +225,7 @@ export default function App() {
       {composer ? (
         <form className="composer" onSubmit={(event) => {
           event.preventDefault()
-          setDoc((current) => createLinkedThought(current, composer.fromId, composer.kind, composer.name))
+          setDoc((current) => createLinkedThought(current, composer.fromId, composer.kind, composer.name, 'source'))
           setComposer(null)
         }}>
           <label>
