@@ -1,6 +1,6 @@
 export type LinkKind = 'child' | 'jump'
 export type ViewMode = 'plex' | 'outline' | 'mindmap' | 'cards'
-export type CreateKind = 'child' | 'parent' | 'jump' | 'sibling'
+export type CreateKind = 'child' | 'parent' | 'jump'
 
 export interface Attachment {
   id: string

@@ -24,6 +24,11 @@ export default defineConfig(({ command }) => ({
   build: {
     rollupOptions: {
       input: 'app.html',
+      output: {
+        entryFileNames: 'assets/app.js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/app[extname]',
+      },
     },
     sourcemap: true,
     target: 'es2022',
