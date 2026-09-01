@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { BrainDocument, CreateKind, PlexZones } from '../types'
-import { childrenOf, curvePath, gatePoint, jumpsOf, layoutPlex, nextCreateKind, parentsOf, relationFromPoint } from '../lib/plex'
+import { childrenOf, curvePath, gatePoint, jumpsOf, layoutPlex, nextCreateKind, parentsOf, relationFromPoint, THOUGHT_TYPES } from '../lib/plex'
 
 type Menu = { x: number; y: number; id: string } | null
 type Drag = {
@@ -17,13 +17,13 @@ type Draft = {
   y: number
   kind: CreateKind
   name: string
+  label: string
   fromId: string
 }
-type Press = { x: number; y: number }
 
-const TAP_SLOP = 14
-const DRAFT_W = 248
-const DRAFT_H = 126
+const TAP_SLOP = 22
+const DRAFT_W = 268
+const DRAFT_H = 178
 const KINDS: CreateKind[] = ['parent', 'child', 'jump', 'sibling']
 
 export function Plex({
@@ -42,7 +42,7 @@ export function Plex({
   expand: boolean
   onActivate: (id: string) => void
   onCreate: (kind: CreateKind, fromId: string) => void
-  onCommit: (kind: CreateKind, fromId: string, name: string) => void
+  onCommit: (kind: CreateKind, fromId: string, name: string, label?: string) => void
   onLink: (fromId: string, toId: string, kind: CreateKind) => void
   onForget: (id: string) => void
   onPin: (id: string) => void
@@ -50,8 +50,7 @@ export function Plex({
   const host = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const skipClick = useRef(false)
-  const press = useRef<Press | null>(null)
-  const ignoreBlur = useRef(0)
+  const holdId = useRef<number | null>(null)
   const [size, setSize] = useState({ w: 1000, h: 700 })
   const [drag, setDrag] = useState<Drag>(null)
   const [hover, setHover] = useState<string | null>(null)
@@ -80,9 +79,9 @@ export function Plex({
 
   useEffect(() => {
     if (!draft) return
-    const handle = window.setTimeout(() => input.current?.focus(), 30)
+    const handle = window.setTimeout(() => input.current?.focus({ preventScroll: true }), 0)
     return () => window.clearTimeout(handle)
-  }, [draft?.x, draft?.y, draft?.fromId])
+  }, [draft?.fromId, draft?.x, draft?.y])
 
   function localPoint(event: ReactPointerEvent | PointerEvent) {
     const rect = host.current?.getBoundingClientRect()
@@ -105,41 +104,54 @@ export function Plex({
     return Boolean(el.closest('.thought, .gate, .quick-add, .ctx-menu, .inline-draft'))
   }
 
+  function placeDraft(point: { x: number; y: number }) {
+    return {
+      x: Math.max(12, Math.min(size.w - DRAFT_W - 12, point.x + 16)),
+      y: Math.max(12, Math.min(size.h - DRAFT_H - 12, point.y - 20)),
+    }
+  }
+
   function openDraft(point: { x: number; y: number }, kind?: CreateKind) {
     if (!activeNode) return
-    const left = Math.max(12, Math.min(size.w - DRAFT_W - 12, point.x - DRAFT_W / 2))
-    const top = Math.max(12, Math.min(size.h - DRAFT_H - 12, point.y - 18))
-    ignoreBlur.current = Date.now() + 600
+    const spot = placeDraft(point)
     setMenu(null)
-    setDraft({
-      x: left,
-      y: top,
+    setDraft((prev) => ({
+      x: spot.x,
+      y: spot.y,
       kind: kind ?? relationFromPoint(activeNode, point),
-      name: draft?.name ?? '',
+      name: prev?.name ?? '',
+      label: prev?.label ?? '',
       fromId: activeNode.id,
-    })
+    }))
   }
 
   function finishDraft() {
-    if (!draft) return
-    const name = draft.name.trim()
-    if (!name) return
-    onCommit(draft.kind, draft.fromId, name)
-    setDraft(null)
+    setDraft((current) => {
+      if (!current) return current
+      const name = current.name.trim()
+      if (!name) return current
+      onCommit(current.kind, current.fromId, name, current.label || undefined)
+      return null
+    })
   }
 
   function startGate(event: ReactPointerEvent, fromId: string, kind: CreateKind) {
     event.preventDefault()
     event.stopPropagation()
     skipClick.current = true
-    press.current = null
+    holdId.current = null
     const point = localPoint(event)
     host.current?.setPointerCapture(event.pointerId)
-    setDraft(null)
     setDrag({ fromId, kind, x: point.x, y: point.y, startX: point.x, startY: point.y, moved: false })
   }
 
   function move(event: ReactPointerEvent) {
+    if (holdId.current === event.pointerId && draft && activeNode) {
+      const point = localPoint(event)
+      const kind = relationFromPoint(activeNode, point)
+      if (kind !== draft.kind) setDraft({ ...draft, kind })
+      return
+    }
     if (!drag) return
     const point = localPoint(event)
     const moved = drag.moved || Math.hypot(point.x - drag.startX, point.y - drag.startY) > TAP_SLOP
@@ -168,40 +180,40 @@ export function Plex({
 
   function onBackgroundDown(event: ReactPointerEvent) {
     if (event.button !== 0) return
-    if (drag || isChrome(event.target)) {
-      press.current = null
-      return
-    }
-    press.current = localPoint(event)
+    if (drag || isChrome(event.target)) return
+    const point = localPoint(event)
+    if (hitThought(point.x, point.y)) return
+    event.preventDefault()
+    skipClick.current = true
+    holdId.current = event.pointerId
+    host.current?.setPointerCapture(event.pointerId)
+    openDraft(point)
   }
 
   function onBackgroundUp(event: ReactPointerEvent) {
     if (drag) {
       endDrag(event)
-      press.current = null
+      holdId.current = null
       return
     }
-    const start = press.current
-    press.current = null
-    if (!start || event.button !== 0) return
-    const point = localPoint(event)
-    if (Math.hypot(point.x - start.x, point.y - start.y) > TAP_SLOP) return
-    if (isChrome(event.target) || hitThought(point.x, point.y)) return
-    event.preventDefault()
-    if (draft?.name.trim()) {
-      onCommit(draft.kind, draft.fromId, draft.name.trim())
-      setDraft(null)
+    if (holdId.current === event.pointerId) {
+      event.preventDefault()
+      if (host.current?.hasPointerCapture(event.pointerId)) {
+        host.current.releasePointerCapture(event.pointerId)
+      }
+      holdId.current = null
+      skipClick.current = true
+      window.setTimeout(() => input.current?.focus({ preventScroll: true }), 0)
     }
-    openDraft(point)
   }
 
   const origin = drag ? byId.get(drag.fromId) : undefined
   const originGate = origin
     ? gatePoint(origin, drag?.kind === 'parent' ? 'parent' : drag?.kind === 'child' ? 'child' : 'jump')
     : null
-  const draftKind = !draft ? 'jump' : draft.kind === 'parent' || draft.kind === 'child' ? draft.kind : 'jump'
   const draftFrom = draft ? byId.get(draft.fromId) : undefined
-  const draftGate = draft && draftFrom ? gatePoint(draftFrom, draftKind) : null
+  const draftGateKind = !draft ? 'jump' : draft.kind === 'parent' || draft.kind === 'child' ? draft.kind : 'jump'
+  const draftGate = draft && draftFrom ? gatePoint(draftFrom, draftGateKind) : null
   const sourceName = draftFrom?.thought.name ?? zones.active.name
 
   return (
@@ -213,7 +225,13 @@ export function Plex({
       onPointerUp={onBackgroundUp}
       onPointerCancel={() => {
         cancelDrag()
-        press.current = null
+        holdId.current = null
+      }}
+      onClick={(event) => {
+        if (!skipClick.current) return
+        event.preventDefault()
+        event.stopPropagation()
+        skipClick.current = false
       }}
       onContextMenu={(event) => event.preventDefault()}
     >
@@ -245,7 +263,7 @@ export function Plex({
         ) : null}
         {draft && draftGate ? (
           <path
-            d={curvePath(draftGate.x, draftGate.y, draft.x + DRAFT_W / 2, draft.y + 28)}
+            d={curvePath(draftGate.x, draftGate.y, draft.x + 18, draft.y + 22)}
             className={`link link-drag link-${draft.kind}`}
           />
         ) : null}
@@ -308,8 +326,11 @@ export function Plex({
           }}
           onPointerDown={(event) => event.stopPropagation()}
           onPointerUp={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
         >
-          <em>{draft.kind} of {sourceName}</em>
+          <em>
+            {draft.kind} of {sourceName}
+          </em>
           <input
             ref={input}
             value={draft.name}
@@ -326,31 +347,40 @@ export function Plex({
                 setDraft({ ...draft, kind: nextCreateKind(draft.kind) })
               }
             }}
-            onBlur={() => {
-              if (Date.now() < ignoreBlur.current) {
-                input.current?.focus()
-              }
-            }}
           />
-          <div className="draft-kinds">
+          <div className="draft-kinds" aria-label="Relation">
             {KINDS.map((kind) => (
               <button
                 key={kind}
                 type="button"
                 className={draft.kind === kind ? 'on' : undefined}
-                onClick={() => {
-                  ignoreBlur.current = Date.now() + 400
-                  setDraft({ ...draft, kind })
-                  input.current?.focus()
-                }}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setDraft({ ...draft, kind })}
               >
                 {kind}
               </button>
             ))}
           </div>
+          <div className="draft-types" aria-label="Thought type">
+            {THOUGHT_TYPES.map((label) => (
+              <button
+                key={label || 'thought'}
+                type="button"
+                className={draft.label === label ? 'on' : undefined}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setDraft({ ...draft, label })}
+              >
+                {label || 'Thought'}
+              </button>
+            ))}
+          </div>
           <div className="draft-actions">
-            <button type="submit" disabled={!draft.name.trim()}>Create</button>
-            <button type="button" onClick={() => setDraft(null)}>Cancel</button>
+            <button type="submit" disabled={!draft.name.trim()}>
+              Create
+            </button>
+            <button type="button" onClick={() => setDraft(null)}>
+              Cancel
+            </button>
           </div>
         </form>
       ) : null}

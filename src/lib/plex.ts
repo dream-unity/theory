@@ -1,5 +1,7 @@
 import type { BrainDocument, CreateKind, Link, PlexEdge, PlexZones, PlacedThought, Thought } from '../types'
 
+export const THOUGHT_TYPES = ['', 'Practice', 'Portal', 'Principle', 'Lens', 'Core'] as const
+
 export function thoughtMap(doc: BrainDocument): Map<string, Thought> {
   return new Map(doc.thoughts.map((thought) => [thought.id, thought]))
 }

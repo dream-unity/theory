@@ -58,6 +58,7 @@ export function createLinkedThought(
   kind: CreateKind,
   name: string,
   focus: 'new' | 'source' = 'new',
+  extra: { label?: string } = {},
 ): BrainDocument {
   const title = name.trim() || 'New Thought'
   const existing = findByName(doc, title)
@@ -72,8 +73,9 @@ export function createLinkedThought(
     name: title,
     notes: '',
     color: source?.color ?? '#94a3b8',
-    tags: [],
+    tags: extra.label ? [extra.label.toLowerCase()] : [],
     attachments: [],
+    label: extra.label || undefined,
   }
   const next = stamp({
     ...doc,
