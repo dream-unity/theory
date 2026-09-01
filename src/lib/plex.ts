@@ -1,4 +1,4 @@
-import type { BrainDocument, CreateKind, Link, PlexEdge, PlexZones, PlacedThought, Thought } from '../types'
+import type { BrainDocument, Link, PlexEdge, PlexZones, PlacedThought, Thought } from '../types'
 
 export function thoughtMap(doc: BrainDocument): Map<string, Thought> {
   return new Map(doc.thoughts.map((thought) => [thought.id, thought]))
@@ -124,12 +124,12 @@ export function layoutPlex(
   const cx = width / 2
   const cy = height / 2
   const aw = Math.min(260, Math.max(180, width * 0.22))
-  const ah = 78
+  const ah = 62
   const tw = Math.min(168, Math.max(128, width * 0.14))
   const th = 40
   const gap = 16
-  const parentY = expand ? cy - 220 : cy - 158
-  const childY = expand ? cy + 220 : cy + 158
+  const parentY = expand ? cy - 210 : cy - 150
+  const childY = expand ? cy + 210 : cy + 150
   const jumpX = Math.max(24, cx - Math.min(360, width * 0.34))
   const sibX = Math.min(width - tw - 24, cx + Math.min(360, width * 0.34) - tw)
 
@@ -145,7 +145,8 @@ export function layoutPlex(
     nodes.push(...row(zones.grandparents, parentY - 88, cx, gap, tw, th, 'grandparent'))
   }
   if (expand && zones.grandchildren.length) {
-    nodes.push(...row(zones.grandchildren, childY + 48, cx, gap, tw, th, 'grandchild'))
+    const childRows = Math.ceil(zones.children.length / 8) || 1
+    nodes.push(...row(zones.grandchildren, childY + 36 + childRows * 28, cx, gap, tw, th, 'grandchild'))
   }
 
   const byId = new Map(nodes.map((node) => [node.id, node]))
@@ -176,22 +177,6 @@ export function gatePoint(node: PlacedThought, gate: 'parent' | 'child' | 'jump'
   if (gate === 'child') return { x: node.x + node.w / 2, y: node.y + node.h }
   if (gate === 'jump') return { x: node.x, y: node.y + node.h / 2 }
   return { x: node.x + node.w / 2, y: node.y + node.h / 2 }
-}
-
-export function relationFromPoint(origin: PlacedThought, x: number, y: number): CreateKind {
-  const dx = x - (origin.x + origin.w / 2)
-  const dy = y - (origin.y + origin.h / 2)
-  if (Math.abs(dy) >= Math.abs(dx)) return dy < 0 ? 'parent' : 'child'
-  return dx < 0 ? 'jump' : 'sibling'
-}
-
-export function zoneAnchor(origin: PlacedThought, kind: CreateKind): { x: number; y: number } {
-  const cx = origin.x + origin.w / 2
-  const cy = origin.y + origin.h / 2
-  if (kind === 'parent') return { x: cx - 90, y: origin.y - 78 }
-  if (kind === 'child') return { x: cx - 90, y: origin.y + origin.h + 28 }
-  if (kind === 'jump') return { x: origin.x - 210, y: cy - 24 }
-  return { x: origin.x + origin.w + 28, y: cy - 24 }
 }
 
 export function curvePath(x1: number, y1: number, x2: number, y2: number): string {
