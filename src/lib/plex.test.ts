@@ -8,6 +8,7 @@ describe('plex zones', () => {
     expect(zones?.active.name).toBe('Dream Unity')
     expect(zones?.children.map((t) => t.id).sort()).toEqual(['maker', 'machine', 'unity', 'world'].sort())
     expect(zones?.parents).toEqual([])
+    expect(zones?.jumps.map((t) => t.id).sort()).toEqual(['mirror', 'realisation'].sort())
   })
 
   it('derives siblings from a shared parent', () => {
@@ -19,5 +20,6 @@ describe('plex zones', () => {
   it('shows jumps beside the active thought', () => {
     const zones = plexZones(SEED, 'unity-core')
     expect(zones?.jumps.some((t) => t.id === 'creative-freedom')).toBe(true)
+    expect(zones?.parents.some((t) => t.id === 'unity')).toBe(true)
   })
 })
