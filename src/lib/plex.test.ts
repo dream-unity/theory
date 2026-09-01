@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SEED } from '../seed'
-import { childrenOf, parentsOf, plexZones, relationFromPoint, siblingsOf } from './plex'
+import { childrenOf, parentsOf, plexZones, relatedOf, relationFromPoint, siblingsOf } from './plex'
+import { createLinkedThought } from './mutate'
 
 describe('plex zones', () => {
   it('puts Dream Unity children below the home thought', () => {
@@ -22,6 +23,19 @@ describe('plex zones', () => {
     expect(zones?.jumps.some((t) => t.id === 'creative-freedom')).toBe(true)
     expect(zones?.parents.some((t) => t.id === 'unity')).toBe(true)
   })
+
+  it('keeps an unlinked thought visible without forcing a relation', () => {
+    const next = createLinkedThought(SEED, 'home', 'free', 'Solo Idea', 'source')
+    const zones = plexZones(next, 'home')
+    expect(zones?.loose.some((thought) => thought.name === 'Solo Idea')).toBe(true)
+    expect(relatedOf(next, 'home')).not.toContain(next.thoughts.find((thought) => thought.name === 'Solo Idea')?.id)
+  })
+
+  it('stores a simple mind-map line as related', () => {
+    const next = createLinkedThought(SEED, 'home', 'related', 'Connected Idea', 'source')
+    const zones = plexZones(next, 'home')
+    expect(zones?.related.some((thought) => thought.name === 'Connected Idea')).toBe(true)
+  })
 })
 
 describe('spatial capture', () => {
@@ -34,7 +48,7 @@ describe('spatial capture', () => {
     expect(relationFromPoint(active, { x: 860, y: 330 })).toBe('sibling')
   })
 
-  it('defaults a tap on the active thought to child', () => {
-    expect(relationFromPoint(active, { x: 500, y: 330 })).toBe('child')
+  it('defaults a tap on the active thought to a simple line', () => {
+    expect(relationFromPoint(active, { x: 500, y: 330 })).toBe('related')
   })
 })
