@@ -175,6 +175,7 @@ export default function App() {
               expand={expand}
               onActivate={go}
               onCreate={(kind, fromId) => setComposer({ kind, fromId, name: '' })}
+              onCommit={(kind, fromId, name) => setDoc((current) => createLinkedThought(current, fromId, kind, name, 'source'))}
               onLink={(fromId, toId, kind) => setDoc((current) => linkThoughts(current, fromId, toId, kind))}
               onForget={(id) => setDoc((current) => forgetThought(current, id))}
               onPin={(id) => setDoc((current) => togglePin(current, id))}
