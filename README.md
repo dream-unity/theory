@@ -1,25 +1,35 @@
 # Dream Unity — TheBrain
 
-A TheBrain-style knowledge plex for Dream Unity.
+A web reconstruction of [TheBrain](https://thebrain.com) for the Dream Unity theory.
 
-The active thought sits in the centre of the **Plex**. Parents are above, children below, jumps to the left, siblings to the right. Click any thought to activate it. The content pane holds notes and mapped links.
+This is not a conventional mind map. It is a **Plex**: the active thought sits in the centre and the whole map reorganises around it.
 
-## TheBrain model used here
+## TheBrain model
 
-- Thought: name, label, notes, color, tags, attachments
-- Child / parent links (hierarchy)
-- Jump links (lateral, equal weight)
-- Siblings derived from a shared parent
-- Gates on the active thought (parent / jump / child)
-- Pins under the toolbar
-- Instant Activate search
-- Past thought list
-- Forget instead of hard delete
-- Home thought
+| Zone | Position | Meaning |
+| --- | --- | --- |
+| Active thought | Centre | Current focus |
+| Parents | Above | Superordinate topics |
+| Children | Below | Subtopics |
+| Jumps | Left | Related, not hierarchical |
+| Siblings | Right | Share a parent with the active thought |
 
-Shortcuts: `F6` child, `F7` parent, `F8` jump, `Home`, `/` search, `Ctrl+Delete` forget.
+Each thought has three **gates**: top = parent, bottom = child, left = jump. Hollow means no links; filled means links exist. Drag a gate onto another thought to link them, or drop on empty space to create a new thought.
 
-## Run
+## Views
+
+- **Normal** — the Plex
+- **Outline** — parentless roots and their child trees
+- **Mind Map** — active thought with parents above and children below
+- **Cards** — every visible thought as a note card
+
+Expand shows one extra generation (grandparents / grandchildren).
+
+## Mechanics
+
+Instant Activate search, pins, back/forward/home, notes, URL attachments, types/labels, tags, thought colour, forget instead of hard delete, JSON export/import, local persistence.
+
+Shortcuts: `F6` child, `F7` parent, `F8` jump, `Home`, `Alt+←` / `Alt+→`, `/` search, `Ctrl+Delete` forget. Double-click a thought to create a child.
 
 ```bash
 npm install
