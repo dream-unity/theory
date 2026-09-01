@@ -199,10 +199,9 @@ export function Plex({
   const originGate = origin
     ? gatePoint(origin, drag?.kind === 'parent' ? 'parent' : drag?.kind === 'child' ? 'child' : 'jump')
     : null
+  const draftKind = !draft ? 'jump' : draft.kind === 'parent' || draft.kind === 'child' ? draft.kind : 'jump'
   const draftFrom = draft ? byId.get(draft.fromId) : undefined
-  const draftGate = draftFrom
-    ? gatePoint(draftFrom, draft.kind === 'parent' ? 'parent' : draft.kind === 'child' ? 'child' : 'jump')
-    : null
+  const draftGate = draft && draftFrom ? gatePoint(draftFrom, draftKind) : null
   const sourceName = draftFrom?.thought.name ?? zones.active.name
 
   return (
