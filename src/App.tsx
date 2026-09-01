@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CreateKind, ViewMode } from './types'
+import type { BrainDocument, BrainLibrary, CreateKind, ViewMode } from './types'
 import { plexZones, searchThoughts, thoughtMap } from './lib/plex'
 import {
   activate,
@@ -12,13 +12,27 @@ import {
   togglePin,
   updateThought,
 } from './lib/mutate'
-import { exportDocument, importDocument, loadDocument, resetDocument, saveDocument, seedDocument } from './lib/store'
+import {
+  addBrain,
+  blankDocument,
+  deleteBrain,
+  exportDocument,
+  importDocument,
+  loadBrain,
+  loadLibrary,
+  repairDocument,
+  saveBrain,
+  seedDocument,
+} from './lib/store'
 import { Plex } from './components/Plex'
 import { ContentArea } from './components/ContentArea'
 import { CardView, MindMapView, OutlineView } from './components/AltViews'
+import { StartMenu } from './components/StartMenu'
 
 export default function App() {
-  const [doc, setDoc] = useState(() => seedDocument())
+  const [library, setLibrary] = useState<BrainLibrary>(() => loadLibrary())
+  const [brainId, setBrainId] = useState<string | null>(null)
+  const [doc, setDoc] = useState<BrainDocument | null>(null)
   const [query, setQuery] = useState('')
   const [view, setView] = useState<ViewMode>('plex')
   const [expand, setExpand] = useState(false)
@@ -26,20 +40,22 @@ export default function App() {
   const [pane, setPane] = useState(400)
 
   useEffect(() => {
-    setDoc(loadDocument())
+    setLibrary(loadLibrary())
   }, [])
 
   useEffect(() => {
-    const handle = window.setTimeout(() => saveDocument(doc), 180)
+    if (!brainId || !doc) return
+    const handle = window.setTimeout(() => setLibrary(saveBrain(brainId, doc, library)), 180)
     return () => window.clearTimeout(handle)
-  }, [doc])
+  }, [doc, brainId])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (!doc) return
       if (isTyping(event)) return
       if (event.key === 'Home') {
         event.preventDefault()
-        setDoc((current) => activate(current, current.homeId))
+        setDoc((current) => (current ? activate(current, current.homeId) : current))
       }
       if (event.key === 'F6') {
         event.preventDefault()
@@ -55,59 +71,152 @@ export default function App() {
       }
       if (event.altKey && event.key === 'ArrowLeft') {
         event.preventDefault()
-        setDoc((current) => goHistory(current, -1))
+        setDoc((current) => (current ? goHistory(current, -1) : current))
       }
       if (event.altKey && event.key === 'ArrowRight') {
         event.preventDefault()
-        setDoc((current) => goHistory(current, 1))
+        setDoc((current) => (current ? goHistory(current, 1) : current))
       }
       if ((event.ctrlKey || event.metaKey) && event.key === 'Delete') {
         event.preventDefault()
-        setDoc((current) => forgetThought(current, current.activeId))
+        setDoc((current) => (current ? forgetThought(current, current.activeId) : current))
       }
       if (event.key === '/') {
         event.preventDefault()
         document.getElementById('instant-activate')?.focus()
       }
-      if (event.key === 'Escape') setComposer(null)
+      if (event.key === 'Escape') {
+        setComposer(null)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [doc.activeId])
+  }, [doc])
 
-  const zones = useMemo(() => plexZones(doc), [doc])
-  const hits = useMemo(() => (query.trim() ? searchThoughts(doc, query) : []), [doc, query])
-  const map = useMemo(() => thoughtMap(doc), [doc])
-  const active = map.get(doc.activeId) ?? doc.thoughts[0]
-  const pins = doc.pins.map((id) => map.get(id)).filter(Boolean)
-  const past = doc.history.slice().reverse().slice(0, 18).map((id) => map.get(id)).filter(Boolean)
+  const zones = useMemo(() => (doc ? plexZones(doc) : null), [doc])
+  const hits = useMemo(() => (doc && query.trim() ? searchThoughts(doc, query) : []), [doc, query])
+  const map = useMemo(() => (doc ? thoughtMap(doc) : new Map()), [doc])
+  const active = doc ? map.get(doc.activeId) ?? doc.thoughts.find((thought) => !thought.forgotten) : undefined
+  const pins = doc ? doc.pins.map((id) => map.get(id)).filter(Boolean) : []
+  const past = doc ? doc.history.slice().reverse().slice(0, 18).map((id) => map.get(id)).filter(Boolean) : []
+
+  function openBrain(id: string) {
+    const next = loadBrain(id)
+    if (!next) {
+      setLibrary(deleteBrain(id))
+      setBrainId(null)
+      setDoc(null)
+      return
+    }
+    setBrainId(id)
+    setDoc(next)
+    setQuery('')
+    setComposer(null)
+    setView('plex')
+    setLibrary((current) => ({ ...current, activeId: id }))
+  }
+
+  function createFrom(nextDoc: BrainDocument, template?: 'dream-unity' | 'blank') {
+    const created = addBrain(nextDoc, template)
+    setLibrary(created.library)
+    setBrainId(created.id)
+    setDoc(created.doc)
+    setQuery('')
+    setComposer(null)
+    setView('plex')
+  }
+
+  function closeToMenu() {
+    if (brainId && doc) setLibrary(saveBrain(brainId, doc, library))
+    setBrainId(null)
+    setDoc(null)
+    setComposer(null)
+  }
 
   function go(id: string) {
-    setDoc((current) => activate(current, id))
+    setDoc((current) => (current ? activate(current, id) : current))
     setQuery('')
     setComposer(null)
   }
 
-  if (!zones || !active) {
+  if (!brainId || !doc) {
     return (
-      <div className="boot">
-        <p>Opening TheBrain</p>
-      </div>
+      <StartMenu
+        items={library.items}
+        onOpen={openBrain}
+        onCreateBlank={(title) => createFrom(blankDocument(title), 'blank')}
+        onCreateTheory={() => createFrom(seedDocument(), 'dream-unity')}
+        onDelete={(id) => {
+          setLibrary(deleteBrain(id))
+          if (brainId === id) {
+            setBrainId(null)
+            setDoc(null)
+          }
+        }}
+        onImport={(raw) => {
+          const next = importDocument(raw)
+          if (next) createFrom(next, 'blank')
+        }}
+      />
+    )
+  }
+
+  const safeDoc = repairDocument(doc)
+  const safeZones = safeDoc ? plexZones(safeDoc) : zones
+  const safeActive = safeDoc ? thoughtMap(safeDoc).get(safeDoc.activeId) ?? active : active
+
+  if (!safeDoc || !safeZones || !safeActive) {
+    return (
+      <StartMenu
+        items={library.items}
+        onOpen={openBrain}
+        onCreateBlank={(title) => createFrom(blankDocument(title), 'blank')}
+        onCreateTheory={() => createFrom(seedDocument(), 'dream-unity')}
+        onDelete={(id) => setLibrary(deleteBrain(id))}
+        onImport={(raw) => {
+          const next = importDocument(raw)
+          if (next) createFrom(next, 'blank')
+        }}
+      />
     )
   }
 
   return (
     <div className="brain-shell">
       <header className="brain-toolbar">
-        <div className="brand">
+        <button type="button" className="brand maps-btn" onClick={closeToMenu} title="All maps">
           <strong>TheBrain</strong>
-          <em>{doc.title}</em>
-        </div>
+          <em>{safeDoc.title}</em>
+        </button>
+        <label className="map-switch">
+          <span>Maps</span>
+          <select
+            value={brainId}
+            onChange={(event) => {
+              if (brainId && doc) setLibrary(saveBrain(brainId, doc, library))
+              openBrain(event.target.value)
+            }}
+          >
+            {library.items.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.title}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="nav-btns">
-          <button type="button" onClick={() => setDoc((current) => goHistory(current, -1))} title="Back">←</button>
-          <button type="button" onClick={() => setDoc((current) => goHistory(current, 1))} title="Forward">→</button>
-          <button type="button" onClick={() => go(doc.homeId)} title="Home thought">⌂</button>
-          <button type="button" className={expand ? 'on' : undefined} onClick={() => setExpand((value) => !value)} title="Expand one generation">⊞</button>
+          <button type="button" onClick={() => setDoc((current) => (current ? goHistory(current, -1) : current))} title="Back">
+            ←
+          </button>
+          <button type="button" onClick={() => setDoc((current) => (current ? goHistory(current, 1) : current))} title="Forward">
+            →
+          </button>
+          <button type="button" onClick={() => go(safeDoc.homeId)} title="Home thought">
+            ⌂
+          </button>
+          <button type="button" className={expand ? 'on' : undefined} onClick={() => setExpand((value) => !value)} title="Expand one generation">
+            ⊞
+          </button>
         </div>
         <div className="view-switch">
           {(['plex', 'outline', 'mindmap', 'cards'] as ViewMode[]).map((mode) => (
@@ -119,7 +228,7 @@ export default function App() {
         <div className="pin-rail">
           {pins.map((thought) =>
             thought ? (
-              <button key={thought.id} type="button" className={thought.id === doc.activeId ? 'pin active' : 'pin'} style={{ borderColor: thought.color, color: thought.color }} onClick={() => go(thought.id)}>
+              <button key={thought.id} type="button" className={thought.id === safeDoc.activeId ? 'pin active' : 'pin'} style={{ borderColor: thought.color, color: thought.color }} onClick={() => go(thought.id)}>
                 {thought.name}
               </button>
             ) : null,
@@ -134,7 +243,7 @@ export default function App() {
             onKeyDown={(event) => {
               if (event.key === 'Enter' && query.trim()) {
                 if (hits[0]) go(hits[0].id)
-                else setDoc((current) => createLinkedThought(current, current.activeId, 'child', query.trim(), 'source'))
+                else setDoc((current) => (current ? createLinkedThought(current, current.activeId, 'child', query.trim(), 'source') : current))
                 setQuery('')
               }
             }}
@@ -152,38 +261,47 @@ export default function App() {
             </ul>
           ) : null}
         </div>
-        <button type="button" className="ghost" onClick={() => download(exportDocument(doc))}>Export</button>
+        <button type="button" className="ghost" onClick={() => download(exportDocument(safeDoc))}>
+          Export
+        </button>
         <label className="ghost file-btn">
           Import
-          <input type="file" accept="application/json" hidden onChange={async (event) => {
-            const file = event.target.files?.[0]
-            if (!file) return
-            const next = importDocument(await file.text())
-            if (next) setDoc(next)
-            event.target.value = ''
-          }} />
+          <input
+            type="file"
+            accept="application/json"
+            hidden
+            onChange={async (event) => {
+              const file = event.target.files?.[0]
+              if (!file) return
+              const next = importDocument(await file.text())
+              if (next) createFrom(next, 'blank')
+              event.target.value = ''
+            }}
+          />
         </label>
-        <button type="button" className="ghost" onClick={() => setDoc(resetDocument())}>Reset</button>
+        <button type="button" className="ghost" onClick={closeToMenu}>
+          Maps
+        </button>
       </header>
 
       <div className="brain-body" style={{ gridTemplateColumns: `minmax(0,1fr) 8px ${pane}px` }}>
         <section className="plex-col">
           {view === 'plex' ? (
             <Plex
-              doc={doc}
-              zones={zones}
+              doc={safeDoc}
+              zones={safeZones}
               expand={expand}
               onActivate={go}
               onCreate={(kind, fromId) => setComposer({ kind, fromId, name: '' })}
-              onCommit={(kind, fromId, name, label) => setDoc((current) => createLinkedThought(current, fromId, kind, name, 'source', { label }))}
-              onLink={(fromId, toId, kind) => setDoc((current) => linkThoughts(current, fromId, toId, kind))}
-              onForget={(id) => setDoc((current) => forgetThought(current, id))}
-              onPin={(id) => setDoc((current) => togglePin(current, id))}
+              onCommit={(kind, fromId, name, label) => setDoc((current) => (current ? createLinkedThought(current, fromId, kind, name, 'source', { label }) : current))}
+              onLink={(fromId, toId, kind) => setDoc((current) => (current ? linkThoughts(current, fromId, toId, kind) : current))}
+              onForget={(id) => setDoc((current) => (current ? forgetThought(current, id) : current))}
+              onPin={(id) => setDoc((current) => (current ? togglePin(current, id) : current))}
             />
           ) : null}
-          {view === 'outline' ? <OutlineView doc={doc} onActivate={go} /> : null}
-          {view === 'mindmap' ? <MindMapView doc={doc} onActivate={go} /> : null}
-          {view === 'cards' ? <CardView doc={doc} onActivate={go} /> : null}
+          {view === 'outline' ? <OutlineView doc={safeDoc} onActivate={go} /> : null}
+          {view === 'mindmap' ? <MindMapView doc={safeDoc} onActivate={go} /> : null}
+          {view === 'cards' ? <CardView doc={safeDoc} onActivate={go} /> : null}
           <footer className="past-list">
             {past.map((thought) =>
               thought ? (
@@ -194,46 +312,54 @@ export default function App() {
             )}
           </footer>
         </section>
-        <div className="splitter" onPointerDown={(event) => {
-          const startX = event.clientX
-          const start = pane
-          const move = (next: PointerEvent) => setPane(Math.max(280, Math.min(560, start - (next.clientX - startX))))
-          const up = () => {
-            window.removeEventListener('pointermove', move)
-            window.removeEventListener('pointerup', up)
-          }
-          window.addEventListener('pointermove', move)
-          window.addEventListener('pointerup', up)
-        }} />
+        <div
+          className="splitter"
+          onPointerDown={(event) => {
+            const startX = event.clientX
+            const start = pane
+            const move = (next: PointerEvent) => setPane(Math.max(280, Math.min(560, start - (next.clientX - startX))))
+            const up = () => {
+              window.removeEventListener('pointermove', move)
+              window.removeEventListener('pointerup', up)
+            }
+            window.addEventListener('pointermove', move)
+            window.addEventListener('pointerup', up)
+          }}
+        />
         <ContentArea
-          thought={active}
-          zones={zones}
-          pinned={doc.pins.includes(active.id)}
-          onNotes={(notes) => setDoc((current) => updateThought(current, active.id, { notes }))}
-          onRename={(name) => setDoc((current) => updateThought(current, active.id, { name }))}
-          onLabel={(label) => setDoc((current) => updateThought(current, active.id, { label }))}
-          onTags={(tags) => setDoc((current) => updateThought(current, active.id, { tags }))}
-          onColor={(color) => setDoc((current) => updateThought(current, active.id, { color }))}
+          thought={safeActive}
+          zones={safeZones}
+          pinned={safeDoc.pins.includes(safeActive.id)}
+          onNotes={(notes) => setDoc((current) => (current ? updateThought(current, safeActive.id, { notes }) : current))}
+          onRename={(name) => setDoc((current) => (current ? updateThought(current, safeActive.id, { name }) : current))}
+          onLabel={(label) => setDoc((current) => (current ? updateThought(current, safeActive.id, { label }) : current))}
+          onTags={(tags) => setDoc((current) => (current ? updateThought(current, safeActive.id, { tags }) : current))}
+          onColor={(color) => setDoc((current) => (current ? updateThought(current, safeActive.id, { color }) : current))}
           onActivate={go}
-          onPin={() => setDoc((current) => togglePin(current, active.id))}
-          onForget={() => setDoc((current) => forgetThought(current, active.id))}
-          onAttach={(title, url) => setDoc((current) => addAttachment(current, active.id, { title, url }))}
-          onDetach={(id) => setDoc((current) => removeAttachment(current, active.id, id))}
+          onPin={() => setDoc((current) => (current ? togglePin(current, safeActive.id) : current))}
+          onForget={() => setDoc((current) => (current ? forgetThought(current, safeActive.id) : current))}
+          onAttach={(title, url) => setDoc((current) => (current ? addAttachment(current, safeActive.id, { title, url }) : current))}
+          onDetach={(id) => setDoc((current) => (current ? removeAttachment(current, safeActive.id, id) : current))}
         />
       </div>
 
       {composer ? (
-        <form className="composer" onSubmit={(event) => {
-          event.preventDefault()
-          setDoc((current) => createLinkedThought(current, composer.fromId, composer.kind, composer.name, 'source'))
-          setComposer(null)
-        }}>
+        <form
+          className="composer"
+          onSubmit={(event) => {
+            event.preventDefault()
+            setDoc((current) => (current ? createLinkedThought(current, composer.fromId, composer.kind, composer.name, 'source') : current))
+            setComposer(null)
+          }}
+        >
           <label>
             Create {composer.kind}
             <input autoFocus value={composer.name} onChange={(event) => setComposer({ ...composer, name: event.target.value })} placeholder="Thought name — existing names will be linked" />
           </label>
           <button type="submit">Create</button>
-          <button type="button" onClick={() => setComposer(null)}>Cancel</button>
+          <button type="button" onClick={() => setComposer(null)}>
+            Cancel
+          </button>
         </form>
       ) : null}
     </div>
@@ -243,7 +369,7 @@ export default function App() {
 function isTyping(event: KeyboardEvent): boolean {
   const target = event.target as HTMLElement | null
   if (!target) return false
-  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable
 }
 
 function download(text: string) {
