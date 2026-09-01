@@ -1,6 +1,6 @@
 import type { Attachment, BrainDocument, CreateKind, Link, Thought } from '../types'
 import { uid, nowIso } from './ids'
-import { findByName, hasLink } from './plex'
+import { findByName, hasLink, parentsOf } from './plex'
 import { SEED } from '../seed'
 
 function stamp(doc: BrainDocument): BrainDocument {
@@ -35,16 +35,25 @@ export function updateThought(doc: BrainDocument, id: string, patch: Partial<Tho
   })
 }
 
-function linkOf(kind: CreateKind, fromId: string, toId: string): Link {
+function linkOf(kind: CreateKind, fromId: string, toId: string, parentId?: string): Link {
   if (kind === 'jump') return { id: uid('e'), kind: 'jump', from: fromId, to: toId }
-  if (kind === 'child') return { id: uid('e'), kind: 'child', from: fromId, to: toId }
-  return { id: uid('e'), kind: 'child', from: toId, to: fromId }
+  if (kind === 'parent') return { id: uid('e'), kind: 'child', from: toId, to: fromId }
+  if (kind === 'sibling') return { id: uid('e'), kind: 'child', from: parentId ?? fromId, to: toId }
+  return { id: uid('e'), kind: 'child', from: fromId, to: toId }
 }
 
-export function createLinkedThought(doc: BrainDocument, fromId: string, kind: CreateKind, name: string): BrainDocument {
+export function createLinkedThought(
+  doc: BrainDocument,
+  fromId: string,
+  kind: CreateKind,
+  name: string,
+  options: { focus?: 'new' | 'source' } = {},
+): BrainDocument {
   const title = name.trim() || 'New Thought'
   const existing = findByName(doc, title)
-  if (existing && existing.id !== fromId) return linkThoughts(doc, fromId, existing.id, kind)
+  if (existing && existing.id !== fromId) {
+    return linkThoughts(doc, fromId, existing.id, kind === 'sibling' ? 'child' : kind, options)
+  }
 
   const source = doc.thoughts.find((thought) => thought.id === fromId)
   const thought: Thought = {
@@ -55,21 +64,30 @@ export function createLinkedThought(doc: BrainDocument, fromId: string, kind: Cr
     tags: [],
     attachments: [],
   }
-  return activate(
-    stamp({
-      ...doc,
-      thoughts: [...doc.thoughts, thought],
-      links: [...doc.links, linkOf(kind, fromId, thought.id)],
-    }),
-    thought.id,
-  )
+  const parentId = kind === 'sibling' ? parentsOf(doc, fromId)[0] : undefined
+  const next = stamp({
+    ...doc,
+    thoughts: [...doc.thoughts, thought],
+    links: [...doc.links, linkOf(kind, fromId, thought.id, parentId)],
+  })
+  return options.focus === 'source' ? next : activate(next, thought.id)
 }
 
-export function linkThoughts(doc: BrainDocument, fromId: string, toId: string, kind: CreateKind): BrainDocument {
+export function linkThoughts(
+  doc: BrainDocument,
+  fromId: string,
+  toId: string,
+  kind: CreateKind,
+  options: { focus?: 'new' | 'source' } = {},
+): BrainDocument {
   if (fromId === toId) return doc
-  const directed = linkOf(kind, fromId, toId)
-  if (hasLink(doc.links, directed.kind, directed.from, directed.to)) return activate(doc, toId)
-  return activate(stamp({ ...doc, links: [...doc.links, directed] }), toId)
+  const parentId = kind === 'sibling' ? parentsOf(doc, fromId)[0] : undefined
+  const directed = linkOf(kind, fromId, toId, parentId)
+  if (hasLink(doc.links, directed.kind, directed.from, directed.to)) {
+    return options.focus === 'source' ? doc : activate(doc, toId)
+  }
+  const next = stamp({ ...doc, links: [...doc.links, directed] })
+  return options.focus === 'source' ? next : activate(next, toId)
 }
 
 export function unlinkThoughts(doc: BrainDocument, a: string, b: string): BrainDocument {
