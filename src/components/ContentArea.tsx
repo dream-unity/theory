@@ -32,7 +32,7 @@ export function ContentArea({
 }) {
   const [url, setUrl] = useState('')
   const words = thought.notes.trim() ? thought.notes.trim().split(/\s+/).length : 0
-  const mapped = zones.parents.length + zones.children.length + zones.jumps.length + zones.siblings.length
+  const mapped = zones.parents.length + zones.children.length + zones.jumps.length + zones.siblings.length + zones.related.length
 
   return (
     <aside className="content-pane">
@@ -52,10 +52,12 @@ export function ContentArea({
       <textarea className="notes" value={thought.notes} placeholder="Notes for this thought…" onChange={(event) => onNotes(event.target.value)} />
       <section className="mapped">
         <h4>Mapped Links</h4>
+        <Mapped label="Lines" mark="—" items={zones.related} onActivate={onActivate} />
         <Mapped label="Parents" mark="↑" items={zones.parents} onActivate={onActivate} />
         <Mapped label="Jumps" mark="↔" items={zones.jumps} onActivate={onActivate} />
         <Mapped label="Children" mark="↓" items={zones.children} onActivate={onActivate} />
         <Mapped label="Siblings" mark="→" items={zones.siblings} onActivate={onActivate} />
+        <Mapped label="Unlinked" mark="·" items={zones.loose} onActivate={onActivate} />
       </section>
       <section className="attachments">
         <h4>Attachments</h4>
