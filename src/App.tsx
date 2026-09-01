@@ -59,7 +59,7 @@ export default function App() {
       }
       if (event.key === 'F6') {
         event.preventDefault()
-        setComposer({ kind: 'child', fromId: doc.activeId, name: '' })
+        setComposer({ kind: 'related', fromId: doc.activeId, name: '' })
       }
       if (event.key === 'F7') {
         event.preventDefault()
@@ -243,7 +243,7 @@ export default function App() {
             onKeyDown={(event) => {
               if (event.key === 'Enter' && query.trim()) {
                 if (hits[0]) go(hits[0].id)
-                else setDoc((current) => (current ? createLinkedThought(current, current.activeId, 'child', query.trim(), 'source') : current))
+                else setDoc((current) => (current ? createLinkedThought(current, current.activeId, 'free', query.trim(), 'source') : current))
                 setQuery('')
               }
             }}
