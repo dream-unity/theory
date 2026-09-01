@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { BrainDocument, CreateKind, PlexZones } from '../types'
-import { ADVANCED_KINDS, childrenOf, curvePath, gatePoint, jumpsOf, layoutPlex, nextCreateKind, parentsOf, THOUGHT_TYPES } from '../lib/plex'
+import { ADVANCED_KINDS, childrenOf, curvePath, gatePoint, jumpsOf, layoutPlex, parentsOf } from '../lib/plex'
 
 type Menu = { x: number; y: number; id: string } | null
 type Drag = {
@@ -43,7 +43,7 @@ export function Plex({
   expand: boolean
   onActivate: (id: string) => void
   onCreate: (kind: CreateKind, fromId: string) => void
-  onCommit: (kind: CreateKind, fromId: string, name: string, label?: string) => void
+  onCommit: (kind: CreateKind, fromId: string, name: string, extra?: { label?: string; x?: number; y?: number }) => void
   onLink: (fromId: string, toId: string, kind: CreateKind) => void
   onForget: (id: string) => void
   onPin: (id: string) => void
@@ -141,7 +141,7 @@ export function Plex({
       if (!current) return current
       const name = current.name.trim()
       if (!name) return current
-      onCommit(current.kind, current.fromId, name, current.label || undefined)
+      onCommit(current.kind, current.fromId, name, { label: current.label || undefined, x: current.x, y: current.y })
       return null
     })
   }
@@ -189,7 +189,8 @@ export function Plex({
     const moved = drag.moved || Math.hypot(point.x - drag.startX, point.y - drag.startY) > TAP_SLOP
     const targetId = moved ? hitThought(point.x, point.y, drag.fromId) : null
     if (moved && targetId) onLink(drag.fromId, targetId, drag.kind === 'free' ? 'related' : drag.kind)
-    else if (moved && drag.kind !== 'related' && drag.kind !== 'free') onCreate(drag.kind, drag.fromId)
+    else if (!moved && drag.kind !== 'related' && drag.kind !== 'free') openDraft(point, drag.kind, drag.fromId)
+    else if (moved && drag.kind !== 'related' && drag.kind !== 'free') openDraft(point, drag.kind, drag.fromId)
     else if (moved) openDraft(point, 'related', drag.fromId)
     setDrag(null)
     setHover(null)
@@ -356,7 +357,13 @@ export function Plex({
           onPointerUp={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
         >
-          <em>{draft.kind === 'free' ? 'New thought' : draft.kind === 'related' ? `Line to ${sourceName}` : `${draft.kind} of ${sourceName}`}</em>
+          <em>
+            {draft.kind === 'free'
+              ? 'New thought'
+              : draft.kind === 'related'
+                ? `Line to ${sourceName}`
+                : `${draft.kind} of ${sourceName}`}
+          </em>
           <input
             ref={input}
             value={draft.name}
@@ -368,23 +375,18 @@ export function Plex({
                 event.preventDefault()
                 setDraft(null)
               }
-              if (event.key === 'Tab') {
-                event.preventDefault()
-                setDraft({ ...draft, kind: nextCreateKind(draft.kind), advanced: true })
-              }
             }}
           />
-          <div className="draft-kinds" aria-label="Connection">
-            <button type="button" className={draft.kind === 'free' ? 'on' : undefined} onMouseDown={(event) => event.preventDefault()} onClick={() => setDraft({ ...draft, kind: 'free' })}>
-              Free
-            </button>
-            <button type="button" className={draft.kind === 'related' ? 'on' : undefined} onMouseDown={(event) => event.preventDefault()} onClick={() => setDraft({ ...draft, kind: 'related' })}>
-              Line
-            </button>
-            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setDraft({ ...draft, advanced: !draft.advanced })}>
-              {draft.advanced ? 'Less' : 'More'}
-            </button>
-          </div>
+          {draft.kind === 'related' ? (
+            <div className="draft-kinds" aria-label="Connection">
+              <button type="button" className="on" onMouseDown={(event) => event.preventDefault()}>
+                Line
+              </button>
+              <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setDraft({ ...draft, kind: 'free' })}>
+                Keep free
+              </button>
+            </div>
+          ) : null}
           {draft.advanced ? (
             <div className="draft-kinds" aria-label="Advanced relation">
               {ADVANCED_KINDS.map((kind) => (
@@ -400,19 +402,6 @@ export function Plex({
               ))}
             </div>
           ) : null}
-          <div className="draft-types" aria-label="Thought type">
-            {THOUGHT_TYPES.map((label) => (
-              <button
-                key={label || 'thought'}
-                type="button"
-                className={draft.label === label ? 'on' : undefined}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => setDraft({ ...draft, label })}
-              >
-                {label || 'Thought'}
-              </button>
-            ))}
-          </div>
           <div className="draft-actions">
             <button type="submit" disabled={!draft.name.trim()}>
               Create
@@ -426,7 +415,7 @@ export function Plex({
 
       <div className="plex-legend">
         <span>tap empty space for a free thought</span>
-        <span>drag a thought to draw a line</span>
+        <span>drag to draw a simple line</span>
         <span>hold a thought for parent / child / jump</span>
       </div>
 
