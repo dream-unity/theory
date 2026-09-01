@@ -1,19 +1,23 @@
-# Dream Unity — Theory Atlas
+# Dream Unity — TheBrain
 
-A 2.5D knowledge atlas for Dream Unity. Four coloured quadrants surround **Unity Core**. Every card keeps its note, verb-labelled relations, maturity ring, and filing path visible. Nothing is hidden by semantic zoom.
+A TheBrain-style knowledge plex for Dream Unity.
 
-## What you are looking at
+The active thought sits in the centre of the **Plex**. Parents are above, children below, jumps to the left, siblings to the right. Click any thought to activate it. The content pane holds notes and mapped links.
 
-The working surface matches the atlas desk:
+## TheBrain model used here
 
-- **Maker / Machine / World / Unity** quadrants, always on
-- **Unity Core** in the centre, with in-card notes and a blinking caret
-- **Atlas Filing Rail** — Inbox, Whole Theory, Mirror & Freedom, Three Forms, Realisation Lab
-- **Inspector** — full note, maturity, sources, file-under, tags
-- **Dossier** — facet chips, long notes, and drawers for Essence / Relations / Grounding / Mirror / Practice
-- Verb edges: *enables, shapes, grounds, synthesises into, realises as, attunes, integrates*
+- Thought: name, label, notes, color, tags, attachments
+- Child / parent links (hierarchy)
+- Jump links (lateral, equal weight)
+- Siblings derived from a shared parent
+- Gates on the active thought (parent / jump / child)
+- Pins under the toolbar
+- Instant Activate search
+- Past thought list
+- Forget instead of hard delete
+- Home thought
 
-Cards stay on the map at every zoom. Positions persist. Double-click a card to open its dossier. Type inside the card.
+Shortcuts: `F6` child, `F7` parent, `F8` jump, `Home`, `/` search, `Ctrl+Delete` forget.
 
 ## Run
 
@@ -21,39 +25,3 @@ Cards stay on the map at every zoom. Positions persist. Double-click a card to o
 npm install
 npm run dev
 ```
-
-```bash
-npm test
-npm run build
-```
-
-GitHub Pages builds from `main` via `.github/workflows/deploy-pages.yml` and publishes `/theory/`.
-
-## Use
-
-| Action | How |
-|---|---|
-| Pan | Drag the desk |
-| Move a card | Drag the card |
-| Connect | Drag a port onto another card |
-| Add | Double-click the desk, right-click, or `N` |
-| Edit notes | Toggle **In-node notes** and type in the card |
-| Dossier | Double-click a card or press Enter |
-| File | Choose a rail view, then **File here** |
-| Restore seed | Filing rail footer |
-
-Edits autosave to IndexedDB. **Restore seeded atlas** returns the canonical Whole Theory map.
-
-## Filing method
-
-Each concept carries:
-
-- **Kind** — core, facet, form, field, principle, practice, tension
-- **Portal / form / phase / stance / maturity**
-- **Notes** typed in the card
-- **Sources**
-- **Mirror** — identity, intention, paradox, inversion risk, falsifier, restoring action
-- **Practice** — methods, experiments, habits
-- **Views** — which filing rail the card belongs on
-
-The same concept can sit in more than one view without being copied.

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { BrainDocument, LinkKind } from './types'
+import type { BrainDocument } from './types'
+import type { CreateKind } from './lib/mutate'
 import { plexZones, searchThoughts, thoughtMap } from './lib/plex'
 import { activate, createLinkedThought, forgetThought, togglePin, updateThought } from './lib/mutate'
 import { loadDocument, resetDocument, saveDocument, seedDocument } from './lib/store'
@@ -9,7 +10,7 @@ import { ContentPane } from './components/ContentPane'
 export default function App() {
   const [doc, setDoc] = useState<BrainDocument>(() => seedDocument())
   const [query, setQuery] = useState('')
-  const [composer, setComposer] = useState<{ kind: LinkKind | 'parent'; name: string } | null>(null)
+  const [composer, setComposer] = useState<{ kind: CreateKind; name: string } | null>(null)
 
   useEffect(() => {
     setDoc(loadDocument())
@@ -22,28 +23,28 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const typing = isTyping(event)
-      if (event.key === 'Home' && !typing) {
+      if (isTyping(event)) return
+      if (event.key === 'Home') {
         event.preventDefault()
         setDoc((current) => activate(current, current.homeId))
       }
-      if (event.key === 'F6' && !typing) {
+      if (event.key === 'F6') {
         event.preventDefault()
         setComposer({ kind: 'child', name: '' })
       }
-      if (event.key === 'F7' && !typing) {
+      if (event.key === 'F7') {
         event.preventDefault()
         setComposer({ kind: 'parent', name: '' })
       }
-      if (event.key === 'F8' && !typing) {
+      if (event.key === 'F8') {
         event.preventDefault()
         setComposer({ kind: 'jump', name: '' })
       }
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Delete' && !typing) {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Delete') {
         event.preventDefault()
         setDoc((current) => forgetThought(current, current.activeId))
       }
-      if (event.key === '/' && !typing) {
+      if (event.key === '/') {
         event.preventDefault()
         document.getElementById('instant-activate')?.focus()
       }
@@ -57,8 +58,8 @@ export default function App() {
   const hits = useMemo(() => (query.trim() ? searchThoughts(doc, query) : []), [doc, query])
   const map = useMemo(() => thoughtMap(doc), [doc])
   const active = map.get(doc.activeId) ?? doc.thoughts[0]
-  const pins = doc.pins.map((id) => map.get(id)).filter(Boolean)
-  const past = doc.history.slice(0, 18).map((id) => map.get(id)).filter(Boolean)
+  const pins = doc.pins.map((id) => map.get(id)).filter((thought) => Boolean(thought))
+  const past = doc.history.slice(0, 18).map((id) => map.get(id)).filter((thought) => Boolean(thought))
 
   function go(id: string) {
     setDoc((current) => activate(current, id))
@@ -66,21 +67,10 @@ export default function App() {
     setComposer(null)
   }
 
-  function submitComposer() {
-    if (!composer) return
-    const kind = composer.kind === 'parent' ? 'parent' : composer.kind
-    setDoc((current) => createLinkedThought(current, current.activeId, kind === 'parent' ? 'child' : kind, composer.name))
-    // parent creation uses createLinkedThought with inverted child link via kind 'parent'
-    if (composer.kind === 'parent') {
-      setDoc((current) => createLinkedThought(current, current.activeId, 'child', composer.name))
-    }
-    setComposer(null)
-  }
-
   if (!zones || !active) {
     return (
       <div className="boot">
-        <p>Opening TheBrain…</p>
+        <p>Opening TheBrain</p>
       </div>
     )
   }
@@ -149,23 +139,17 @@ export default function App() {
 
       <div className="brain-body">
         <section className="plex-col">
-          <Plex
-            zones={zones}
-            activeId={doc.activeId}
-            onActivate={go}
-            onCreate={(kind) => setComposer({ kind, name: '' })}
-          />
+          <Plex zones={zones} activeId={doc.activeId} onActivate={go} onCreate={(kind) => setComposer({ kind, name: '' })} />
           <footer className="past-list">
             {past.map((thought) =>
               thought ? (
-                <button key={thought.id + '-past'} type="button" onClick={() => go(thought.id)}>
+                <button key={`${thought.id}-past`} type="button" onClick={() => go(thought.id)}>
                   {thought.name}
                 </button>
               ) : null,
             )}
           </footer>
         </section>
-
         <ContentPane
           thought={active}
           zones={zones}
@@ -183,19 +167,12 @@ export default function App() {
           className="composer"
           onSubmit={(event) => {
             event.preventDefault()
-            setDoc((current) =>
-              createLinkedThought(
-                current,
-                current.activeId,
-                composer.kind === 'parent' ? 'parent' : composer.kind,
-                composer.name,
-              ),
-            )
+            setDoc((current) => createLinkedThought(current, current.activeId, composer.kind, composer.name))
             setComposer(null)
           }}
         >
           <label>
-            Create {composer.kind === 'child' ? 'child' : composer.kind === 'jump' ? 'jump' : 'parent'}
+            Create {composer.kind}
             <input
               autoFocus
               value={composer.name}
@@ -218,6 +195,3 @@ function isTyping(event: KeyboardEvent): boolean {
   if (!target) return false
   return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 }
-
-void submitComposerPlaceholder
-function submitComposerPlaceholder() {}
