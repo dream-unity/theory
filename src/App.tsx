@@ -1,173 +1,223 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { AtlasDocument, AtlasView, Concept } from './types'
-import { FilingRail } from './components/FilingRail'
-import { Inspector } from './components/Inspector'
-import { Dossier } from './components/Dossier'
-import { AtlasCanvas } from './components/AtlasCanvas'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { addConcept, addRelation, fileConcept, tagCounts, updateConcept, visibleConcepts, moveConcept } from './lib/document'
+import { useEffect, useMemo, useState } from 'react'
+import type { BrainDocument, LinkKind } from './types'
+import { plexZones, searchThoughts, thoughtMap } from './lib/plex'
+import { activate, createLinkedThought, forgetThought, togglePin, updateThought } from './lib/mutate'
 import { loadDocument, resetDocument, saveDocument, seedDocument } from './lib/store'
+import { Plex } from './components/Plex'
+import { ContentPane } from './components/ContentPane'
 
 export default function App() {
-  const [doc, setDoc] = useState<AtlasDocument>(() => seedDocument())
-  const [view, setView] = useState<AtlasView>('whole-theory')
-  const [selectedId, setSelectedId] = useState<string | null>('unity-core')
-  const [editing, setEditing] = useState(true)
-  const [dossierOpen, setDossierOpen] = useState(false)
-  const [spaceHelp, setSpaceHelp] = useState(true)
+  const [doc, setDoc] = useState<BrainDocument>(() => seedDocument())
+  const [query, setQuery] = useState('')
+  const [composer, setComposer] = useState<{ kind: LinkKind | 'parent'; name: string } | null>(null)
 
   useEffect(() => {
-    void loadDocument()
-      .then((loaded) => {
-        setDoc(loaded)
-        const preferred = loaded.concepts.find((concept) => concept.id === 'unity-core') ?? loaded.concepts[0]
-        setSelectedId(preferred?.id ?? null)
-      })
-      .catch(() => {
-        const seed = seedDocument()
-        setDoc(seed)
-        setSelectedId('unity-core')
-      })
+    setDoc(loadDocument())
   }, [])
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      void saveDocument(doc)
-    }, 240)
+    const handle = window.setTimeout(() => saveDocument(doc), 200)
     return () => window.clearTimeout(handle)
   }, [doc])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === '?') setSpaceHelp((value) => !value)
-      if (event.key === 'Escape') {
-        setDossierOpen(false)
-        setSelectedId(null)
-      }
-      if (event.key === 'Enter' && selectedId && !isTyping(event)) setDossierOpen(true)
-      if (event.key === 'n' && !isTyping(event)) {
+      const typing = isTyping(event)
+      if (event.key === 'Home' && !typing) {
         event.preventDefault()
-        setDoc((current) => addConcept(current, view, { title: 'Untitled card' }))
+        setDoc((current) => activate(current, current.homeId))
       }
+      if (event.key === 'F6' && !typing) {
+        event.preventDefault()
+        setComposer({ kind: 'child', name: '' })
+      }
+      if (event.key === 'F7' && !typing) {
+        event.preventDefault()
+        setComposer({ kind: 'parent', name: '' })
+      }
+      if (event.key === 'F8' && !typing) {
+        event.preventDefault()
+        setComposer({ kind: 'jump', name: '' })
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Delete' && !typing) {
+        event.preventDefault()
+        setDoc((current) => forgetThought(current, current.activeId))
+      }
+      if (event.key === '/' && !typing) {
+        event.preventDefault()
+        document.getElementById('instant-activate')?.focus()
+      }
+      if (event.key === 'Escape') setComposer(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedId, view])
+  }, [])
 
-  const selected = useMemo(
-    () => doc.concepts.find((concept) => concept.id === selectedId) ?? null,
-    [doc, selectedId],
-  )
+  const zones = useMemo(() => plexZones(doc), [doc])
+  const hits = useMemo(() => (query.trim() ? searchThoughts(doc, query) : []), [doc, query])
+  const map = useMemo(() => thoughtMap(doc), [doc])
+  const active = map.get(doc.activeId) ?? doc.thoughts[0]
+  const pins = doc.pins.map((id) => map.get(id)).filter(Boolean)
+  const past = doc.history.slice(0, 18).map((id) => map.get(id)).filter(Boolean)
 
-  const patchSelected = useCallback(
-    (patch: Partial<Concept>) => {
-      if (!selectedId) return
-      setDoc((current) => updateConcept(current, selectedId, patch))
-    },
-    [selectedId],
-  )
+  function go(id: string) {
+    setDoc((current) => activate(current, id))
+    setQuery('')
+    setComposer(null)
+  }
 
-  const titles = Object.fromEntries(doc.concepts.map((concept) => [concept.id, concept.title]))
-  const inboxCount = visibleConcepts(doc, 'inbox').length
+  function submitComposer() {
+    if (!composer) return
+    const kind = composer.kind === 'parent' ? 'parent' : composer.kind
+    setDoc((current) => createLinkedThought(current, current.activeId, kind === 'parent' ? 'child' : kind, composer.name))
+    // parent creation uses createLinkedThought with inverted child link via kind 'parent'
+    if (composer.kind === 'parent') {
+      setDoc((current) => createLinkedThought(current, current.activeId, 'child', composer.name))
+    }
+    setComposer(null)
+  }
+
+  if (!zones || !active) {
+    return (
+      <div className="boot">
+        <p>Opening TheBrain…</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="atlas-shell">
-      <FilingRail
-        view={view}
-        inboxCount={inboxCount}
-        tagCounts={tagCounts(doc)}
-        onView={(next) => {
-          setView(next)
-          setDossierOpen(false)
-          const first = visibleConcepts(doc, next)[0]
-          setSelectedId(first?.id ?? null)
-        }}
-        onReset={() => {
-          void resetDocument().then((fresh) => {
-            setDoc(fresh)
-            setView('whole-theory')
-            setSelectedId('unity-core')
-          })
-        }}
-      />
-
-      <main className="atlas-main">
-        <header className="atlas-topbar">
-          <div>
-            <p className="eyebrow">Dream Unity · Theory Atlas</p>
-            <h1>{viewTitle(view)}</h1>
-          </div>
-          <div className="top-actions">
-            <label className="edit-toggle">
-              <input type="checkbox" checked={editing} onChange={(event) => setEditing(event.target.checked)} />
-              In-node notes
-            </label>
-            <button type="button" onClick={() => setDoc((current) => addConcept(current, view, { title: 'Untitled card' }))}>
-              + Card
-            </button>
-            {selected ? (
-              <button type="button" onClick={() => setDoc((current) => fileConcept(current, selected.id, view))}>
-                File here
+    <div className="brain-shell">
+      <header className="brain-toolbar">
+        <div className="brand">
+          <strong>TheBrain</strong>
+          <em>{doc.title}</em>
+        </div>
+        <div className="nav-btns">
+          <button type="button" onClick={() => go(doc.history[1] ?? doc.homeId)} title="Back">
+            ←
+          </button>
+          <button type="button" onClick={() => go(doc.homeId)} title="Home thought">
+            ⌂
+          </button>
+        </div>
+        <div className="pin-rail">
+          {pins.map((thought) =>
+            thought ? (
+              <button
+                key={thought.id}
+                type="button"
+                className={thought.id === doc.activeId ? 'pin active' : 'pin'}
+                style={{ borderColor: thought.color, color: thought.color }}
+                onClick={() => go(thought.id)}
+              >
+                {thought.name}
               </button>
-            ) : null}
-          </div>
-        </header>
-
-        <ErrorBoundary fallbackTitle="Canvas failed to draw">
-          <AtlasCanvas
-            doc={doc}
-            view={view}
-            selectedId={selectedId}
-            editing={editing}
-            onSelect={setSelectedId}
-            onMove={(id, x, y) => setDoc((current) => moveConcept(current, id, x, y))}
-            onConnectNodes={(from, to) => setDoc((current) => addRelation(current, from, to))}
-            onAddAt={(x, y) => setDoc((current) => addConcept(current, view, { title: 'Untitled card', x, y }))}
-            onChangeNotes={(id, notes) =>
-              setDoc((current) => updateConcept(current, id, { notes, essence: notes.split('\n')[0] ?? '' }))
-            }
-            onChangeTitle={(id, title) => setDoc((current) => updateConcept(current, id, { title }))}
-            onOpenDossier={(id) => {
-              setSelectedId(id)
-              setDossierOpen(true)
+            ) : null,
+          )}
+        </div>
+        <div className="search-wrap">
+          <input
+            id="instant-activate"
+            value={query}
+            placeholder="Search / Create"
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && query.trim()) {
+                if (hits[0]) go(hits[0].id)
+                else setDoc((current) => createLinkedThought(current, current.activeId, 'child', query.trim()))
+                setQuery('')
+              }
             }}
           />
-        </ErrorBoundary>
-        {spaceHelp ? (
-          <p className="hint-bar">
-            Drag the desk to pan · drag a card to place it · drag a port to connect · double-click the desk to add ·
-            double-click a card for the dossier.
-          </p>
-        ) : null}
-      </main>
+          {hits.length > 0 ? (
+            <ul className="instant">
+              {hits.slice(0, 8).map((thought) => (
+                <li key={thought.id}>
+                  <button type="button" onClick={() => go(thought.id)}>
+                    <b>{thought.name}</b>
+                    <i>{thought.label ?? thought.tags[0] ?? ''}</i>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+        <button type="button" className="ghost" onClick={() => setDoc(resetDocument())}>
+          Reset Brain
+        </button>
+      </header>
 
-      <Inspector
-        concept={selected}
-        relations={doc.relations}
-        titles={titles}
-        onClose={() => setSelectedId(null)}
-        onOpenDossier={() => selected && setDossierOpen(true)}
-        onMaturity={(value) => patchSelected({ maturity: value })}
-      />
+      <div className="brain-body">
+        <section className="plex-col">
+          <Plex
+            zones={zones}
+            activeId={doc.activeId}
+            onActivate={go}
+            onCreate={(kind) => setComposer({ kind, name: '' })}
+          />
+          <footer className="past-list">
+            {past.map((thought) =>
+              thought ? (
+                <button key={thought.id + '-past'} type="button" onClick={() => go(thought.id)}>
+                  {thought.name}
+                </button>
+              ) : null,
+            )}
+          </footer>
+        </section>
 
-      {dossierOpen && selected ? (
-        <Dossier concept={selected} onClose={() => setDossierOpen(false)} onChange={patchSelected} />
+        <ContentPane
+          thought={active}
+          zones={zones}
+          pinned={doc.pins.includes(active.id)}
+          onNotes={(notes) => setDoc((current) => updateThought(current, active.id, { notes }))}
+          onRename={(name) => setDoc((current) => updateThought(current, active.id, { name }))}
+          onActivate={go}
+          onPin={() => setDoc((current) => togglePin(current, active.id))}
+          onForget={() => setDoc((current) => forgetThought(current, active.id))}
+        />
+      </div>
+
+      {composer ? (
+        <form
+          className="composer"
+          onSubmit={(event) => {
+            event.preventDefault()
+            setDoc((current) =>
+              createLinkedThought(
+                current,
+                current.activeId,
+                composer.kind === 'parent' ? 'parent' : composer.kind,
+                composer.name,
+              ),
+            )
+            setComposer(null)
+          }}
+        >
+          <label>
+            Create {composer.kind === 'child' ? 'child' : composer.kind === 'jump' ? 'jump' : 'parent'}
+            <input
+              autoFocus
+              value={composer.name}
+              onChange={(event) => setComposer({ ...composer, name: event.target.value })}
+              placeholder="Thought name"
+            />
+          </label>
+          <button type="submit">Create</button>
+          <button type="button" onClick={() => setComposer(null)}>
+            Cancel
+          </button>
+        </form>
       ) : null}
     </div>
   )
 }
 
-function viewTitle(view: AtlasView): string {
-  if (view === 'whole-theory') return 'Whole Theory'
-  if (view === 'mirror-freedom') return 'Mirror & Freedom'
-  if (view === 'three-forms') return 'Three Forms'
-  if (view === 'realisation-lab') return 'Realisation Lab'
-  return 'Inbox'
-}
-
 function isTyping(event: KeyboardEvent): boolean {
   const target = event.target as HTMLElement | null
   if (!target) return false
-  const tag = target.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable
+  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 }
+
+void submitComposerPlaceholder
+function submitComposerPlaceholder() {}

@@ -1,41 +1,34 @@
-import { get, set } from 'idb-keyval'
-import type { AtlasDocument } from '../types'
-import { cloneSeed } from './document'
+import type { BrainDocument } from '../types'
+import { cloneSeed } from './mutate'
 
-const KEY = 'dream-unity-atlas-v2'
+const KEY = 'dream-unity-brain-v3'
 
-export function seedDocument(): AtlasDocument {
+export function seedDocument(): BrainDocument {
   return cloneSeed()
 }
 
-export async function loadDocument(): Promise<AtlasDocument> {
+export function loadDocument(): BrainDocument {
   try {
-    const stored = await get<AtlasDocument>(KEY)
-    if (stored && stored.schemaVersion === 2 && Array.isArray(stored.concepts) && stored.concepts.length > 0) {
-      return stored
-    }
+    const raw = localStorage.getItem(KEY)
+    if (!raw) return cloneSeed()
+    const parsed = JSON.parse(raw) as BrainDocument
+    if (parsed?.schemaVersion === 3 && Array.isArray(parsed.thoughts) && parsed.thoughts.length) return parsed
   } catch {
-    /* use seed */
+    /* ignore */
   }
-  const seed = cloneSeed()
-  try {
-    await saveDocument(seed)
-  } catch {
-    /* private mode / blocked IDB must not block first paint */
-  }
-  return seed
+  return cloneSeed()
 }
 
-export async function saveDocument(doc: AtlasDocument): Promise<void> {
+export function saveDocument(doc: BrainDocument): void {
   try {
-    await set(KEY, doc)
+    localStorage.setItem(KEY, JSON.stringify(doc))
   } catch {
-    /* ignore quota / private-mode failures */
+    /* private mode */
   }
 }
 
-export async function resetDocument(): Promise<AtlasDocument> {
+export function resetDocument(): BrainDocument {
   const seed = cloneSeed()
-  await saveDocument(seed)
+  saveDocument(seed)
   return seed
 }
