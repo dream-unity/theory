@@ -40,6 +40,22 @@ export interface BrainDocument {
   updatedAt: string
 }
 
+export interface BrainMeta {
+  id: string
+  title: string
+  updatedAt: string
+  thoughtCount: number
+  homeName: string
+  color: string
+  template?: 'dream-unity' | 'blank'
+}
+
+export interface BrainLibrary {
+  schemaVersion: 1
+  activeId: string | null
+  items: BrainMeta[]
+}
+
 export interface PlexZones {
   active: Thought
   parents: Thought[]
