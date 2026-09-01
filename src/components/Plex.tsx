@@ -22,8 +22,9 @@ type Draft = {
 type Press = { x: number; y: number }
 
 const TAP_SLOP = 14
-const DRAFT_W = 188
-const DRAFT_H = 54
+const DRAFT_W = 248
+const DRAFT_H = 126
+const KINDS: CreateKind[] = ['parent', 'child', 'jump', 'sibling']
 
 export function Plex({
   doc,
@@ -50,6 +51,7 @@ export function Plex({
   const input = useRef<HTMLInputElement>(null)
   const skipClick = useRef(false)
   const press = useRef<Press | null>(null)
+  const ignoreBlur = useRef(0)
   const [size, setSize] = useState({ w: 1000, h: 700 })
   const [drag, setDrag] = useState<Drag>(null)
   const [hover, setHover] = useState<string | null>(null)
@@ -78,9 +80,9 @@ export function Plex({
 
   useEffect(() => {
     if (!draft) return
-    input.current?.focus()
-    input.current?.select()
-  }, [draft])
+    const handle = window.setTimeout(() => input.current?.focus(), 30)
+    return () => window.clearTimeout(handle)
+  }, [draft?.x, draft?.y, draft?.fromId])
 
   function localPoint(event: ReactPointerEvent | PointerEvent) {
     const rect = host.current?.getBoundingClientRect()
@@ -106,25 +108,23 @@ export function Plex({
   function openDraft(point: { x: number; y: number }, kind?: CreateKind) {
     if (!activeNode) return
     const left = Math.max(12, Math.min(size.w - DRAFT_W - 12, point.x - DRAFT_W / 2))
-    const top = Math.max(12, Math.min(size.h - DRAFT_H - 12, point.y - DRAFT_H / 2))
+    const top = Math.max(12, Math.min(size.h - DRAFT_H - 12, point.y - 18))
+    ignoreBlur.current = Date.now() + 600
     setMenu(null)
     setDraft({
       x: left,
       y: top,
       kind: kind ?? relationFromPoint(activeNode, point),
-      name: '',
+      name: draft?.name ?? '',
       fromId: activeNode.id,
     })
   }
 
-  function finishDraft(next = draft) {
-    if (!next) return
-    const name = next.name.trim()
-    if (!name) {
-      setDraft(null)
-      return
-    }
-    onCommit(next.kind, next.fromId, name)
+  function finishDraft() {
+    if (!draft) return
+    const name = draft.name.trim()
+    if (!name) return
+    onCommit(draft.kind, draft.fromId, name)
     setDraft(null)
   }
 
@@ -187,7 +187,11 @@ export function Plex({
     const point = localPoint(event)
     if (Math.hypot(point.x - start.x, point.y - start.y) > TAP_SLOP) return
     if (isChrome(event.target) || hitThought(point.x, point.y)) return
-    if (draft?.name.trim()) onCommit(draft.kind, draft.fromId, draft.name.trim())
+    event.preventDefault()
+    if (draft?.name.trim()) {
+      onCommit(draft.kind, draft.fromId, draft.name.trim())
+      setDraft(null)
+    }
     openDraft(point)
   }
 
@@ -197,8 +201,9 @@ export function Plex({
     : null
   const draftFrom = draft ? byId.get(draft.fromId) : undefined
   const draftGate = draftFrom
-    ? gatePoint(draftFrom, draft?.kind === 'parent' ? 'parent' : draft?.kind === 'child' ? 'child' : 'jump')
+    ? gatePoint(draftFrom, draft.kind === 'parent' ? 'parent' : draft.kind === 'child' ? 'child' : 'jump')
     : null
+  const sourceName = draftFrom?.thought.name ?? zones.active.name
 
   return (
     <div
@@ -241,7 +246,7 @@ export function Plex({
         ) : null}
         {draft && draftGate ? (
           <path
-            d={curvePath(draftGate.x, draftGate.y, draft.x + DRAFT_W / 2, draft.y + DRAFT_H / 2)}
+            d={curvePath(draftGate.x, draftGate.y, draft.x + DRAFT_W / 2, draft.y + 28)}
             className={`link link-drag link-${draft.kind}`}
           />
         ) : null}
@@ -269,7 +274,6 @@ export function Plex({
                 skipClick.current = false
                 return
               }
-              if (draft) setDraft(null)
               onActivate(node.id)
             }}
             onDoubleClick={() => onCreate('child', node.id)}
@@ -298,7 +302,7 @@ export function Plex({
       {draft ? (
         <form
           className={`inline-draft kind-${draft.kind}`}
-          style={{ left: draft.x, top: draft.y, width: DRAFT_W, height: DRAFT_H }}
+          style={{ left: draft.x, top: draft.y, width: DRAFT_W }}
           onSubmit={(event) => {
             event.preventDefault()
             finishDraft()
@@ -306,7 +310,7 @@ export function Plex({
           onPointerDown={(event) => event.stopPropagation()}
           onPointerUp={(event) => event.stopPropagation()}
         >
-          <em>{draft.kind}</em>
+          <em>{draft.kind} of {sourceName}</em>
           <input
             ref={input}
             value={draft.name}
@@ -324,12 +328,31 @@ export function Plex({
               }
             }}
             onBlur={() => {
-              window.setTimeout(() => {
-                if (document.activeElement === input.current) return
-                if (!draft.name.trim()) setDraft(null)
-              }, 80)
+              if (Date.now() < ignoreBlur.current) {
+                input.current?.focus()
+              }
             }}
           />
+          <div className="draft-kinds">
+            {KINDS.map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                className={draft.kind === kind ? 'on' : undefined}
+                onClick={() => {
+                  ignoreBlur.current = Date.now() + 400
+                  setDraft({ ...draft, kind })
+                  input.current?.focus()
+                }}
+              >
+                {kind}
+              </button>
+            ))}
+          </div>
+          <div className="draft-actions">
+            <button type="submit" disabled={!draft.name.trim()}>Create</button>
+            <button type="button" onClick={() => setDraft(null)}>Cancel</button>
+          </div>
         </form>
       ) : null}
 
